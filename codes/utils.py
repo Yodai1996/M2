@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from torchvision import models, transforms, datasets
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import Dataset, DataLoader
+from torchvision.ops import box_iou
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -161,6 +162,7 @@ def valid(dataloader, model):
 
     # validation
     #model.train() あえてつける必要はないが、結局これと同じ。with torch.no_grad(): をつけている間は誤差逆伝搬はなされないのでOK。
+    model.train()
     for images, bboxes in dataloader:
         images = list(image.to(device) for image in images)
         batch = len(images)
@@ -176,3 +178,36 @@ def valid(dataloader, model):
         sum_loss += loss
 
     return sum_loss / total
+
+
+def miou(dataloader, model, numDisplay=2):
+
+    total = 0
+    sum_miou = 0
+
+    model.eval()
+    for images, targets in dataloader:
+        images = list(image.to(device) for image in images)
+        batch = len(images)
+        outputs = model(images)
+
+        #calculate iou with targets and outputs
+        for i in range(batch):
+            trueBoxes = targets[i]
+            boxes = outputs[i]["boxes"].data.cpu()  #.numpy()
+            scores = outputs[i]["scores"].data.cpu()  #.numpy()
+
+            # filtering by the top numDisplay
+            boxes = boxes[:numDisplay]
+            scores = scores[:numDisplay]
+
+            # calculate iou with targets and outputs
+            bboxIou = box_iou(boxes, trueBoxes)
+            maxIou = bboxIou.max(axis=0)  #calculate the maximum IoU for each trueBox
+            maxIou = np.array(maxIou.values)
+            meanIou =sum(maxIou)/len(maxIou)
+            sum_miou += meanIou
+
+        total += batch
+
+    return sum_miou / total

@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, miou
 
 args = sys.argv
 trainPath, validPath, testPath, trainBbox, validBbox, testBbox, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7]
@@ -25,7 +25,8 @@ numSamples = int(args[10])
 trainDir = "/lustre/gk36/k77012/M2/data/{}/".format(trainPath)
 validDir = "/lustre/gk36/k77012/M2/data/{}/".format(validPath)
 testDir = "/lustre/gk36/k77012/M2/data/{}/".format(testPath)
-inferDir = "/lustre/gk36/k77012/M2/results/{}_{}_{}_batch{}_epoch{}/".format(trainPath, validPath, modelName, batch_size, num_epoch)
+#inferDir = "/lustre/gk36/k77012/M2/results/{}_{}_{}_batch{}_epoch{}/".format(trainPath, validPath, modelName, batch_size, num_epoch)
+inferDir = "/lustre/gk36/k77012/M2/result/{}_{}_{}_batch{}_epoch{}/".format(trainPath, validPath, modelName, batch_size, num_epoch)
 df = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(trainBbox))
 df_valid = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(validBbox))
 df_test = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(testBbox))
@@ -34,6 +35,7 @@ df_test = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(testBbox))
 originalSize = 1024
 size = 300
 lr = 0.0002
+numDisplay = 2 #the number of predicted bboxes to display, also used when calculating mIoU.
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 df = preprocess_df(df, originalSize, size, trainDir)
@@ -74,7 +76,12 @@ for epoch in range(num_epoch):
         valid_loss = valid(validloader, model)
         test_loss = valid(testloader, model)
 
-    print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  test_loss:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, test_loss))
+        #calculate performance of mean IoU
+        mIoU = miou(validloader, model, numDisplay)
+        testmIoU = miou(testloader, model, numDisplay)
+
+    #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  test_loss:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, test_loss))
+    print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  test_loss:{:.4f}  test_mIoU:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, mIoU, test_loss, testmIoU))
 
 #modify and redefine again to use in visualization
 trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
@@ -82,6 +89,6 @@ validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_mem
 testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
 # visualization of training, validation and testing
-visualize(model, trainloader, df, numSamples, inferDir + "train/", numDisplay=2)
-visualize(model, validloader, df_valid, numSamples, inferDir + "valid/", numDisplay=2)
-visualize(model, testloader, df_test, numSamples, inferDir + "test/", numDisplay=2)
+visualize(model, trainloader, df, numSamples, inferDir + "train/", numDisplay)
+visualize(model, validloader, df_valid, numSamples, inferDir + "valid/", numDisplay)
+visualize(model, testloader, df_test, numSamples, inferDir + "test/", numDisplay)
