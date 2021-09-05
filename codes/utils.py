@@ -180,7 +180,7 @@ def valid(dataloader, model):
     return sum_loss / total
 
 
-def miou(dataloader, model, numDisplay=2):
+def mIoU(dataloader, model, numDisplay=2):
 
     total = 0
     sum_miou = 0
@@ -203,11 +203,58 @@ def miou(dataloader, model, numDisplay=2):
 
             # calculate iou with targets and outputs
             bboxIou = box_iou(boxes, trueBoxes)
-            maxIou = bboxIou.max(axis=0)  #calculate the maximum IoU for each trueBox
-            maxIou = np.array(maxIou.values)
-            meanIou =sum(maxIou)/len(maxIou)
+            maxIou = bboxIou.max(axis=0).values.numpy()  #calculate the maximum IoU for each trueBox
+            #maxIou = np.array(maxIou.values)
+            meanIou = maxIou.mean()  #sum(maxIou)/len(maxIou)
             sum_miou += meanIou
 
         total += batch
 
     return sum_miou / total
+
+
+def mAP(dataloader, model, numDisplay=2):
+
+    total = 0
+    sum_ap = 0
+
+    iou_thresholds = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75]
+
+    model.eval()
+    for images, targets in dataloader:
+        images = list(image.to(device) for image in images)
+        batch = len(images)
+        outputs = model(images)
+
+        #calculate iou with targets and outputs
+        for ind in range(batch):
+            trueBoxes = targets[ind]
+            boxes = outputs[ind]["boxes"].data.cpu()  #.numpy()
+            scores = outputs[ind]["scores"].data.cpu()  #.numpy()
+
+            # filtering by the top numDisplay
+#            boxes = boxes[:numDisplay]
+#            scores = scores[:numDisplay]
+
+            n_tps = np.zeros(len(iou_thresholds))
+
+            # calculate iou with targets and outputs
+            bboxIou = box_iou(boxes, trueBoxes)
+            maxIou = bboxIou.max(axis=1).values.numpy()  #calculate the maximum IoU for each bbox, not trueBox
+            gt_indices = bboxIou.argmax(axis=1)
+            gt_used = np.zeros((len(iou_thresholds), len(trueBoxes)), dtype=bool)
+            for k, (iou, conf) in enumerate(zip(maxIou, scores)):
+                for i in range(len(iou_thresholds)):
+                    if not gt_used[i, gt_indices[k]] and iou >= iou_thresholds[i]:
+                        n_tps[i] += 1
+                        gt_used[i, gt_indices[k]] = True
+                # TP + FP = (# of predictions), TP + FN = len(gt_bbox)
+                # thus TP + FP + FN = (# of predictions) + len(gt_bbox) - TP
+                prec = n_tps / ((k + 1) + len(trueBoxes) - n_tps)
+                ap = prec.mean()
+
+            sum_ap += ap
+
+        total += batch
+
+    return sum_ap / total

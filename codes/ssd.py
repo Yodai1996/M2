@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, miou
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP
 
 args = sys.argv
 trainPath, validPath, testPath, trainBbox, validBbox, testBbox, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7]
@@ -77,11 +77,14 @@ for epoch in range(num_epoch):
         test_loss = valid(testloader, model)
 
         #calculate performance of mean IoU
-        mIoU = miou(validloader, model, numDisplay)
-        testmIoU = miou(testloader, model, numDisplay)
+        miou = mIoU(validloader, model, numDisplay)
+        map = mAP(validloader, model, numDisplay)
+        testmiou = mIoU(testloader, model, numDisplay)
+        testmap = mAP(testloader, model, numDisplay)
 
     #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  test_loss:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, test_loss))
-    print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  test_loss:{:.4f}  test_mIoU:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, mIoU, test_loss, testmIoU))
+    #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  test_loss:{:.4f}  test_mIoU:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, mIoU, test_loss, testmIoU))
+    print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap))
 
 #modify and redefine again to use in visualization
 trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
