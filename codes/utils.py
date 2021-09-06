@@ -201,12 +201,14 @@ def mIoU(dataloader, model, numDisplay=2):
             boxes = boxes[:numDisplay]
             scores = scores[:numDisplay]
 
-            # calculate iou with targets and outputs
-            bboxIou = box_iou(boxes, trueBoxes)
-            maxIou = bboxIou.max(axis=0).values.numpy()  #calculate the maximum IoU for each trueBox
-            #maxIou = np.array(maxIou.values)
-            meanIou = maxIou.mean()  #sum(maxIou)/len(maxIou)
-            sum_miou += meanIou
+            #deal with when no bbox is predicted. When len(boxes)==0, sum_miou += 0
+            if len(boxes)>0:
+                # calculate iou with targets and outputs
+                bboxIou = box_iou(boxes, trueBoxes)
+                maxIou = bboxIou.max(axis=0).values.numpy()  #calculate the maximum IoU for each trueBox
+                #maxIou = np.array(maxIou.values)
+                meanIou = maxIou.mean()  #sum(maxIou)/len(maxIou)
+                sum_miou += meanIou
 
         total += batch
 
@@ -233,8 +235,8 @@ def mAP(dataloader, model, numDisplay=2):
             scores = outputs[ind]["scores"].data.cpu()  #.numpy()
 
             # filtering by the top numDisplay
-#            boxes = boxes[:numDisplay]
-#            scores = scores[:numDisplay]
+            boxes = boxes[:numDisplay]
+            scores = scores[:numDisplay]
 
             n_tps = np.zeros(len(iou_thresholds))
 
@@ -243,6 +245,8 @@ def mAP(dataloader, model, numDisplay=2):
             maxIou = bboxIou.max(axis=1).values.numpy()  #calculate the maximum IoU for each bbox, not trueBox
             gt_indices = bboxIou.argmax(axis=1)
             gt_used = np.zeros((len(iou_thresholds), len(trueBoxes)), dtype=bool)
+
+            ap = 0
             for k, (iou, conf) in enumerate(zip(maxIou, scores)):
                 for i in range(len(iou_thresholds)):
                     if not gt_used[i, gt_indices[k]] and iou >= iou_thresholds[i]:
