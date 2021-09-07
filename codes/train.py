@@ -1,15 +1,16 @@
 import sys
+import argparse
 import pandas as pd
 from skimage import io, transform
 from PIL import Image, ImageDraw, ImageFilter
 
 import torch
-from torch import nn, optim
+from torch import nn, optim, distributed as dist
 import torch.nn.functional as F
 
 from torchvision import models, transforms, datasets
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, DistributedSampler
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -31,6 +32,16 @@ df = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(trainBbox))
 df_valid = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(validBbox))
 #df_test = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(testBbox))
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--local_rank", type=int)
+args = parser.parse_args()
+local_rank = args.local_rank
+torch.cuda.set_device(local_rank)  # before your code runs, set your device to local rank
+dist.init_process_group(backend='nccl', init_method='env://') # distributed environment
+rank = dist.get_rank() #使うかはわからんが一応取得しておこう。
+
+
 # hypara
 originalSize = 1024
 size = 300
@@ -49,8 +60,8 @@ transform = transforms.Compose([
 trainset = MyDataset(df, transform=transform)
 validset = MyDataset(df_valid, transform=transform)
 #testset = MyDataset(df_test, transform=transform)
-trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
-validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
+trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, sampler=DistributedSampler(dataset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
+validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, sampler=DistributedSampler(dataset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
 #testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
 num_classes = 2 #(len(classes)) + 1
@@ -70,6 +81,10 @@ else:  #modelName=="fasterRCNN"
 # training
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
+#DDP
+model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)  #output_deviceは不要かもしれない
+
+
 for epoch in range(num_epoch):
 
     train_loss = train(trainloader, model, optimizer)
@@ -86,14 +101,16 @@ for epoch in range(num_epoch):
 #        testmap = mAP(testloader, model, numDisplay)
 
     #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap))
-    print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map))
+    if rank==0:
+        print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map))
 
-#modify and redefine again to use in visualization
-trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
-validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
-#testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
-# visualization of training, validation and testing
-visualize(model, trainloader, df, numSamples, saveDir + "train/", numDisplay)
-visualize(model, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
-#visualize(model, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
+# #modify and redefine again to use in visualization
+# trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, sampler=DistributedSampler(dataset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
+# validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, sampler=DistributedSampler(dataset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
+# #testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
+#
+# # visualization of training, validation and testing
+# visualize(model, trainloader, df, numSamples, saveDir + "train/", numDisplay)
+# visualize(model, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
+# #visualize(model, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
