@@ -87,6 +87,7 @@ model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], outp
 
 for epoch in range(num_epoch):
 
+    trainloader.sampler.set_epoch(epoch)  # necessary to shuffle dataset
     train_loss = train(trainloader, model, local_rank, optimizer)
 
     # validation
