@@ -47,7 +47,7 @@ originalSize = 1024
 size = 300
 lr = 0.0002
 numDisplay = 2 #the number of predicted bboxes to display, also used when calculating mIoU.
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 df = preprocess_df(df, originalSize, size, trainDir)
 df_valid = preprocess_df(df_valid, originalSize, size, validDir)
@@ -66,17 +66,17 @@ validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, sampler
 
 num_classes = 2 #(len(classes)) + 1
 if modelName=="SSD":
-    model = models.detection.ssd300_vgg16(pretrained=False, pretrained_backbone=False).to(device)
+    model = models.detection.ssd300_vgg16(pretrained=False, pretrained_backbone=False).to(local_rank) #.to(device)
     if pretrained=="pretrained":
         model.load_state_dict(torch.load("/lustre/gk36/k77012/M2/ssd300_vgg16_coco-b556d3b4.pth"))
     model2 = models.detection.ssd300_vgg16(num_classes = num_classes, pretrained=False, pretrained_backbone=False)
-    model.head.classification_head = model2.head.classification_head.to(device)  #modify the head of the model
+    model.head.classification_head = model2.head.classification_head.to(local_rank) #.to(device)  #modify the head of the model
 else:  #modelName=="fasterRCNN"
-    model = models.detection.fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone=False).to(device)
+    model = models.detection.fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone=False).to(local_rank) #.to(device)
     if pretrained == "pretrained":
         model.load_state_dict(torch.load("/lustre/gk36/k77012/M2/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth"))  # model.load_state_dict(torch.load("/lustre/gk36/k77012/faster_RCNN.pth"))
     in_features = model.roi_heads.box_predictor.cls_score.in_features
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes).to(device)
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes).to(local_rank) #.to(device)
 
 # training
 optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -87,16 +87,16 @@ model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], outp
 
 for epoch in range(num_epoch):
 
-    train_loss = train(trainloader, model, optimizer)
+    train_loss = train(trainloader, model, local_rank, optimizer)
 
     # validation
     with torch.no_grad():
-        valid_loss = valid(validloader, model)
+        valid_loss = valid(validloader, model, local_rank)
 #        test_loss = valid(testloader, model)
 
         #calculate performance of mean IoU
-        miou = mIoU(validloader, model, numDisplay)
-        map = mAP(validloader, model, numDisplay)
+        miou = mIoU(validloader, model, local_rank, numDisplay)
+        map = mAP(validloader, model, local_rank, numDisplay)
 #        testmiou = mIoU(testloader, model, numDisplay)
 #        testmap = mAP(testloader, model, numDisplay)
 
@@ -111,6 +111,6 @@ for epoch in range(num_epoch):
 # #testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 #
 # # visualization of training, validation and testing
-# visualize(model, trainloader, df, numSamples, saveDir + "train/", numDisplay)
-# visualize(model, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
-# #visualize(model, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
+# visualize(model, local_rank, trainloader, df, numSamples, saveDir + "train/", numDisplay)
+# visualize(model, local_rank, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
+# #visualize(model, local_rank, testloader, df_test, numSamples, saveDir + "test/", numDisplay)

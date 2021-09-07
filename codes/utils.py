@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class MyDataset(Dataset):
     def __init__(self, df, transform=None):
@@ -70,7 +70,7 @@ def collate_fn(batch):
     return tuple(zip(*batch))
 
 #バグ修正版。
-def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=2):
+def visualize(model, local_rank, dataloader, dataframe, numSamples, saveDir, numDisplay=2):
 
     torch.cuda.empty_cache()
     model.eval()
@@ -79,7 +79,7 @@ def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=2):
     num = 0
 
     for images, targets in dataloader:
-        images = list(img.to(device) for img in images)
+        images = list(img.to(local_rank) for img in images)  #list(img.to(device) for img in images)
         outputs = model(images)
 
         for ind, image in enumerate(images):
@@ -129,17 +129,18 @@ def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=2):
             break
 
 
-def train(dataloader, model, optimizer):
+def train(dataloader, model, local_rank, optimizer):
     total = 0
     sum_loss = 0
 
     #training
     model.train()
     for images, bboxes in dataloader:
-        images = list(image.to(device) for image in images)
+        images = list(img.to(local_rank) for img in images)  #list(image.to(device) for image in images)
         batch = len(images)
 
-        targets = [{"boxes": bbox.to(device), "labels": torch.ones(len(bbox), dtype=torch.int64).to(device)} for bbox in bboxes]
+        #targets = [{"boxes": bbox.to(device), "labels": torch.ones(len(bbox), dtype=torch.int64).to(device)} for bbox in bboxes]
+        targets = [{"boxes": bbox.to(local_rank), "labels": torch.ones(len(bbox), dtype=torch.int64).to(local_rank)} for bbox in bboxes]
 
         # return from the model
         loss_dict = model(images, targets)  # 返り値はdict[tensor]でlossが入ってる。（RPNとRCNN両方のloss）
@@ -156,7 +157,7 @@ def train(dataloader, model, optimizer):
     return sum_loss / total
 
 
-def valid(dataloader, model):
+def valid(dataloader, model, local_rank):
     total = 0
     sum_loss = 0
 
@@ -164,10 +165,11 @@ def valid(dataloader, model):
     #model.train() あえてつける必要はないが、結局これと同じ。with torch.no_grad(): をつけている間は誤差逆伝搬はなされないのでOK。
     model.train()
     for images, bboxes in dataloader:
-        images = list(image.to(device) for image in images)
+        images = list(img.to(local_rank) for img in images)  #list(image.to(device) for image in images)
         batch = len(images)
 
-        targets = [{"boxes": bbox.to(device), "labels": torch.ones(len(bbox), dtype=torch.int64).to(device)} for bbox in bboxes]
+        #targets = [{"boxes": bbox.to(device), "labels": torch.ones(len(bbox), dtype=torch.int64).to(device)} for bbox in bboxes]
+        targets = [{"boxes": bbox.to(local_rank), "labels": torch.ones(len(bbox), dtype=torch.int64).to(local_rank)} for bbox in bboxes]
 
         # return from the model
         loss_dict = model(images, targets)  # 返り値はdict[tensor]でlossが入ってる。（RPNとRCNN両方のloss）
@@ -180,14 +182,14 @@ def valid(dataloader, model):
     return sum_loss / total
 
 
-def mIoU(dataloader, model, numDisplay=2):
+def mIoU(dataloader, model, local_rank, numDisplay=2):
 
     total = 0
     sum_miou = 0
 
     model.eval()
     for images, targets in dataloader:
-        images = list(image.to(device) for image in images)
+        images = list(img.to(local_rank) for img in images)  #list(image.to(device) for image in images)
         batch = len(images)
         outputs = model(images)
 
@@ -215,7 +217,7 @@ def mIoU(dataloader, model, numDisplay=2):
     return sum_miou / total
 
 
-def mAP(dataloader, model, numDisplay=2):
+def mAP(dataloader, model, local_rank, numDisplay=2):
 
     total = 0
     sum_ap = 0
@@ -224,7 +226,7 @@ def mAP(dataloader, model, numDisplay=2):
 
     model.eval()
     for images, targets in dataloader:
-        images = list(image.to(device) for image in images)
+        images = list(img.to(local_rank) for img in images)  #list(image.to(device) for image in images)
         batch = len(images)
         outputs = model(images)
 
