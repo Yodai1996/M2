@@ -73,7 +73,7 @@ transform = transforms.Compose([
 trainset = MyDataset(df, transform=transform)
 validset = MyDataset(df_valid, transform=transform)
 #testset = MyDataset(df_test, transform=transform)
-trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, sampler=DistributedSampler(trainset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
+trainloader = DataLoader(trainset, batch_size=batch_size, sampler=DistributedSampler(trainset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
 validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, sampler=DistributedSampler(validset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
 #testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
