@@ -42,7 +42,7 @@ do
           --nnodes=16 --nproc_per_node=2 \
           --master_addr=${HOSTNAME} --master_port=9999 \
           --node_rank=${i} \
-          ../codes/train.py ${trainPath} ${validPath} ${trainBbox} ${validBbox} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained} >> ../train_log/log_${trainPath}_${validPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
+          ../codes/train.py --tp ${trainPath} --vp ${validPath} --tb ${trainBbox} --vb ${validBbox} --model ${model} --epoch ${epoch} --bsz ${batch_size} --ns ${numSamples} --pret ${pretrained} >> ../train_log/log_${trainPath}_${validPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
     " &
 done
 wait

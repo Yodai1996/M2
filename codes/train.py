@@ -18,12 +18,35 @@ from matplotlib.patches import Rectangle
 
 from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP
 
-args = sys.argv
-trainPath, validPath, trainBbox, validBbox, modelName = args[1], args[2], args[3], args[4], args[5],
-num_epoch = int(args[6])
-batch_size = int(args[7])
-numSamples = int(args[8])
-pretrained = args[9]
+parser = argparse.ArgumentParser()
+parser.add_argument("--local_rank", type=int)
+parser.add_argument("--tp")
+parser.add_argument("--vp")
+parser.add_argument("--tb")
+parser.add_argument("--vb")
+parser.add_argument("--model")
+parser.add_argument("--epoch", type=int)
+parser.add_argument("--bsz", type=int)
+parser.add_argument("--ns", type=int)
+parser.add_argument("--pret")
+
+args = parser.parse_args()
+local_rank = args.local_rank  #used at DDP
+trainPath = args.tp
+validPath = args.vp
+trainBbox = args.tb
+validBbox = args.vb
+modelName = args.model
+num_epoch = args.epoch
+batch_size = args.bsz
+numSamples = args.ns
+pretrained = args.pret
+
+#used at DDP
+torch.cuda.set_device(local_rank)  # before your code runs, set your device to local rank
+dist.init_process_group(backend='nccl', init_method='env://') # distributed environment
+rank = dist.get_rank() #使うかはわからんが一応取得しておこう。
+
 trainDir = "/lustre/gk36/k77012/M2/data/{}/".format(trainPath)
 validDir = "/lustre/gk36/k77012/M2/data/{}/".format(validPath)
 #testDir = "/lustre/gk36/k77012/M2/data/{}/".format(testPath)
@@ -31,16 +54,6 @@ saveDir = "/lustre/gk36/k77012/M2/result/{}_{}_{}_batch{}_epoch{}_{}/".format(tr
 df = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(trainBbox))
 df_valid = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(validBbox))
 #df_test = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(testBbox))
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--local_rank", type=int)
-args = parser.parse_args()
-local_rank = args.local_rank
-torch.cuda.set_device(local_rank)  # before your code runs, set your device to local rank
-dist.init_process_group(backend='nccl', init_method='env://') # distributed environment
-rank = dist.get_rank() #使うかはわからんが一応取得しておこう。
-
 
 # hypara
 originalSize = 1024
@@ -102,7 +115,7 @@ for epoch in range(num_epoch):
 #        testmap = mAP(testloader, model, numDisplay)
 
     #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap))
-    if rank==0:
+    if rank==0 or rank==1:
         print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map))
 
 
