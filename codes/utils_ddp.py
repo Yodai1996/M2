@@ -220,14 +220,17 @@ def mIoU(dataloader, model, local_rank, world_size, numDisplay=2):
             if len(boxes)>0:
                 # calculate iou with targets and outputs
                 bboxIou = box_iou(boxes, trueBoxes)
-                maxIou = bboxIou.max(axis=0).values.numpy()  #calculate the maximum IoU for each trueBox
-                #maxIou = np.array(maxIou.values)
-                meanIou = maxIou.mean()  #sum(maxIou)/len(maxIou)
+                maxIou = bboxIou.max(axis=0).values  #.numpy()  #calculate the maximum IoU for each trueBox
+                meanIou = sum(maxIou)/len(maxIou)
                 sum_miou += meanIou
 
         total += batch
 
-    return sum_miou / total
+    miou = sum_miou/total
+    dist.all_reduce(miou)  #sum up the miou
+    miouAve = miou/world_size
+
+    return miouAve.item()
 
 
 def mAP(dataloader, model, local_rank, world_size, numDisplay=2):
