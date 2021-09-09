@@ -133,3 +133,8 @@ if rank==0:
     visualize(model, local_rank, trainloader, df, numSamples, saveDir + "train/", numDisplay)
     visualize(model, local_rank, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
     #visualize(model, local_rank, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
+
+    '''
+    TODO:
+    この可視化の部分は、せっかっくなら分散的に並列処理すれば１０００枚一気に出力するのも短時間でできるかもしれない？
+    '''

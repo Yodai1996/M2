@@ -21,8 +21,8 @@ epoch=20
 batch_size=8 #各プロセスがもつバッチサイズに対応する。すなわち、singleGPUの時と対応付けるには、world_sizeで割っておかないと矛盾する
 numSamples=50
 
-model='SSD'
-#model='fasterRCNN'
+#model='SSD'
+model='fasterRCNN'  #ddpの使い道としては、SSDよりはfasterRCNNの方が多いと考えられる。
 pretrained='pretrained'  #'unpretrained'
 mkdir -p "/lustre/gk36/k77012/M2/result/ddp/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}/" #for saving Dir
 mkdir -p "/lustre/gk36/k77012/M2/result/ddp/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}/train"
