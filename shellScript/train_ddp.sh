@@ -4,7 +4,7 @@
 #PBS -l select=2
 #PBS -W group_list=gk36
 #PBS -l walltime=10:00:00
-#PBS -o main.txt
+#PBS -o train_ddp.txt
 #PBS -j oe
 #PBS -m abe
 #PBS -M suzuki-takahiro596@g.ecc.u-tokyo.ac.jp
@@ -42,7 +42,7 @@ do
           --nnodes=2 --nproc_per_node=2 \
           --master_addr=${HOSTNAME} --master_port=9999 \
           --node_rank=${i} \
-          ../codes/train.py --tp ${trainPath} --vp ${validPath} --tb ${trainBbox} --vb ${validBbox} --model ${model} --epoch ${epoch} --bsz ${batch_size} --ns ${numSamples} --pret ${pretrained} >> ../train_log/ddp/${trainPath}_${validPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
+          ../codes/train_ddp.py --tp ${trainPath} --vp ${validPath} --tb ${trainBbox} --vb ${validBbox} --model ${model} --epoch ${epoch} --bsz ${batch_size} --ns ${numSamples} --pret ${pretrained} >> ../train_log/ddp/${trainPath}_${validPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
     " &
 done
 wait
