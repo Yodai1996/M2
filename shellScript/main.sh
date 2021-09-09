@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -q h-regular
-#PBS -l select=16
+#PBS -l select=2
 #PBS -W group_list=gk36
 #PBS -l walltime=10:00:00
 #PBS -o main.txt
@@ -17,8 +17,8 @@ validBbox='abnormal5012_bboxinfo.csv'
 #testPath='AbnormalDir'
 #testBbox='abnormal_bboxinfo.csv'
 
-epoch=2
-batch_size=32
+epoch=20
+batch_size=8
 numSamples=50
 
 model='SSD'
@@ -39,10 +39,10 @@ do
     . /lustre/gk36/k77012/anaconda3/bin/activate pytorch2
     cd ${PBS_O_WORKDIR} || exit
     python -m torch.distributed.launch \
-          --nnodes=16 --nproc_per_node=2 \
+          --nnodes=2 --nproc_per_node=2 \
           --master_addr=${HOSTNAME} --master_port=9999 \
           --node_rank=${i} \
-          ../codes/train.py --tp ${trainPath} --vp ${validPath} --tb ${trainBbox} --vb ${validBbox} --model ${model} --epoch ${epoch} --bsz ${batch_size} --ns ${numSamples} --pret ${pretrained} >> ../train_log/log_${trainPath}_${validPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
+          ../codes/train.py --tp ${trainPath} --vp ${validPath} --tb ${trainBbox} --vb ${validBbox} --model ${model} --epoch ${epoch} --bsz ${batch_size} --ns ${numSamples} --pret ${pretrained} >> ../train_log/ddp/${trainPath}_${validPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
     " &
 done
 wait
