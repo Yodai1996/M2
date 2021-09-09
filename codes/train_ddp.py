@@ -51,7 +51,7 @@ world_size = dist.get_world_size()
 trainDir = "/lustre/gk36/k77012/M2/data/{}/".format(trainPath)
 validDir = "/lustre/gk36/k77012/M2/data/{}/".format(validPath)
 #testDir = "/lustre/gk36/k77012/M2/data/{}/".format(testPath)
-saveDir = "/lustre/gk36/k77012/M2/result/{}_{}_{}_batch{}_epoch{}_{}/".format(trainPath, validPath, modelName, batch_size, num_epoch, pretrained) #saveDir = "/lustre/gk36/k77012/M2/result/{}_{}_{}_batch{}_epoch{}/".format(trainPath, validPath, modelName, batch_size, num_epoch)
+saveDir = "/lustre/gk36/k77012/M2/result/ddp/{}_{}_{}_batch{}_epoch{}_{}/".format(trainPath, validPath, modelName, batch_size, num_epoch, pretrained) #saveDir = "/lustre/gk36/k77012/M2/result/{}_{}_{}_batch{}_epoch{}/".format(trainPath, validPath, modelName, batch_size, num_epoch)
 df = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(trainBbox))
 df_valid = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(validBbox))
 #df_test = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(testBbox))
@@ -76,9 +76,10 @@ validset = MyDataset(df_valid, transform=transform)
 #testset = MyDataset(df_test, transform=transform)
 trainloader = DataLoader(trainset, batch_size=batch_size, sampler=DistributedSampler(trainset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn) #DistributedSamplerを使うとデフォでshuffle=True
 #validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4, collate_fn=collate_fn) #torch.no_gradなので分散させるまでもない
+validloader = DataLoader(validset, batch_size=16, shuffle=False, pin_memory=True, num_workers=4, collate_fn=collate_fn) #torch.no_gradなので分散させるまでもない
 
 #本当はshuffle=Falseでやりたい
-validloader = DataLoader(validset, batch_size=batch_size, sampler=DistributedSampler(validset, shuffle=False), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
+#validloader = DataLoader(validset, batch_size=batch_size, sampler=DistributedSampler(validset, shuffle=False), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
 #testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
 num_classes = 2 #(len(classes)) + 1
@@ -108,26 +109,27 @@ for epoch in range(num_epoch):
 
     # validation
     with torch.no_grad():
-        valid_loss = valid(validloader, model, local_rank, world_size)
+        valid_loss = valid(validloader, model, local_rank)
 #        test_loss = valid(testloader, model)
 
         #calculate performance of mean IoU
-        miou = mIoU(validloader, model, local_rank, world_size, numDisplay)
-        map = mAP(validloader, model, local_rank, world_size, numDisplay)
+        miou = mIoU(validloader, model, local_rank, numDisplay)
+        map = mAP(validloader, model, local_rank, numDisplay)
 #        testmiou = mIoU(testloader, model, numDisplay)
 #        testmap = mAP(testloader, model, numDisplay)
 
     #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap))
-    if rank==0 or rank==1:
+    if rank==0:
         print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map))
 
 
 # #modify and redefine again to use in visualization
-# trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, sampler=DistributedSampler(dataset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
-# validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, sampler=DistributedSampler(dataset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
-# #testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
-#
-# # visualization of training, validation and testing
-# visualize(model, local_rank, trainloader, df, numSamples, saveDir + "train/", numDisplay)
-# visualize(model, local_rank, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
-# #visualize(model, local_rank, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
+if rank==0:
+    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4, collate_fn=collate_fn)
+    validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4, collate_fn=collate_fn)
+    #testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
+
+    # visualization of training, validation and testing
+    visualize(model, local_rank, trainloader, df, numSamples, saveDir + "train/", numDisplay)
+    visualize(model, local_rank, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
+    #visualize(model, local_rank, testloader, df_test, numSamples, saveDir + "test/", numDisplay)

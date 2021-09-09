@@ -166,7 +166,7 @@ def train(dataloader, model, local_rank, world_size, optimizer):
     return lossAve.item()
 
 
-def valid(dataloader, model, local_rank, world_size):
+def valid(dataloader, model, local_rank):
     total = 0
     sum_loss = 0
 
@@ -186,16 +186,12 @@ def valid(dataloader, model, local_rank, world_size):
         loss = losses.item()
 
         total += batch
-        sum_loss += losses #loss
+        sum_loss += loss
 
-    loss = sum_loss/total
-    dist.all_reduce(loss)  #sum up the loss
-    lossAve = loss/world_size
-
-    return lossAve.item()
+    return sum_loss / total
 
 
-def mIoU(dataloader, model, local_rank, world_size, numDisplay=2):
+def mIoU(dataloader, model, local_rank, numDisplay=2):
 
     total = 0
     sum_miou = 0
@@ -220,20 +216,17 @@ def mIoU(dataloader, model, local_rank, world_size, numDisplay=2):
             if len(boxes)>0:
                 # calculate iou with targets and outputs
                 bboxIou = box_iou(boxes, trueBoxes)
-                maxIou = bboxIou.max(axis=0).values  #.numpy()  #calculate the maximum IoU for each trueBox
-                meanIou = sum(maxIou)/len(maxIou)
+                maxIou = bboxIou.max(axis=0).values.numpy()  #calculate the maximum IoU for each trueBox
+                #maxIou = np.array(maxIou.values)
+                meanIou = maxIou.mean()  #sum(maxIou)/len(maxIou)
                 sum_miou += meanIou
 
         total += batch
 
-    miou = sum_miou/total
-    dist.all_reduce(miou)  #sum up the miou
-    miouAve = miou/world_size
-
-    return miouAve.item()
+    return sum_miou / total
 
 
-def mAP(dataloader, model, local_rank, world_size, numDisplay=2):
+def mAP(dataloader, model, local_rank, numDisplay=2):
 
     total = 0
     sum_ap = 0
