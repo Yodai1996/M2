@@ -46,6 +46,7 @@ pretrained = args.pret
 torch.cuda.set_device(local_rank)  # before your code runs, set your device to local rank
 dist.init_process_group(backend='nccl', init_method='env://') # distributed environment
 rank = dist.get_rank() #使うかはわからんが一応取得しておこう。
+world_size = dist.get_world_size()
 
 trainDir = "/lustre/gk36/k77012/M2/data/{}/".format(trainPath)
 validDir = "/lustre/gk36/k77012/M2/data/{}/".format(validPath)
@@ -73,8 +74,11 @@ transform = transforms.Compose([
 trainset = MyDataset(df, transform=transform)
 validset = MyDataset(df_valid, transform=transform)
 #testset = MyDataset(df_test, transform=transform)
-trainloader = DataLoader(trainset, batch_size=batch_size, sampler=DistributedSampler(trainset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
-validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, sampler=DistributedSampler(validset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
+trainloader = DataLoader(trainset, batch_size=batch_size, sampler=DistributedSampler(trainset), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn) #DistributedSamplerを使うとデフォでshuffle=True
+#validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4, collate_fn=collate_fn) #torch.no_gradなので分散させるまでもない
+
+#本当はshuffle=Falseでやりたい
+validloader = DataLoader(validset, batch_size=batch_size, sampler=DistributedSampler(validset, shuffle=False), num_workers=4 * torch.cuda.device_count(), pin_memory=True, collate_fn=collate_fn)
 #testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
 num_classes = 2 #(len(classes)) + 1
@@ -95,22 +99,21 @@ else:  #modelName=="fasterRCNN"
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
 #DDP
-model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)  #output_deviceは不要かもしれない
-
+model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank]) #, output_device=local_rank)  #output_deviceは不要かもしれない
 
 for epoch in range(num_epoch):
 
     trainloader.sampler.set_epoch(epoch)  # necessary to shuffle dataset
-    train_loss = train(trainloader, model, local_rank, optimizer)
+    train_loss = train(trainloader, model, local_rank, world_size, optimizer)
 
     # validation
     with torch.no_grad():
-        valid_loss = valid(validloader, model, local_rank)
+        valid_loss = valid(validloader, model, local_rank, world_size)
 #        test_loss = valid(testloader, model)
 
         #calculate performance of mean IoU
-        miou = mIoU(validloader, model, local_rank, numDisplay)
-        map = mAP(validloader, model, local_rank, numDisplay)
+        miou = mIoU(validloader, model, local_rank, world_size, numDisplay)
+        map = mAP(validloader, model, local_rank, world_size, numDisplay)
 #        testmiou = mIoU(testloader, model, numDisplay)
 #        testmap = mAP(testloader, model, numDisplay)
 

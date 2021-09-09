@@ -4,7 +4,7 @@ from skimage import io, transform
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 import torch
-from torch import nn, optim
+from torch import nn, optim, distributed as dist
 import torch.nn.functional as F
 
 from torchvision import models, transforms, datasets
@@ -129,7 +129,7 @@ def visualize(model, local_rank, dataloader, dataframe, numSamples, saveDir, num
             break
 
 
-def train(dataloader, model, local_rank, optimizer):
+def train(dataloader, model, local_rank, world_size, optimizer):
     total = 0
     sum_loss = 0
 
@@ -152,12 +152,21 @@ def train(dataloader, model, local_rank, optimizer):
         optimizer.step()
 
         total += batch
-        sum_loss += loss
+        sum_loss += losses  #loss
 
-    return sum_loss / total
+    # loss = torch.tensor(sum_loss / total)  #dist.all_gatherを使うにはtorch.tensorである必要がある
+    # lossList = [torch.zeros(1) for i in range(world_size)]  #initialize
+    # dist.all_gather(lossList, loss)
+    # lossAve = sum(lossList) / len(lossList)
+
+    loss = sum_loss/total
+    dist.all_reduce(loss)  #sum up the loss
+    lossAve = loss/world_size
+
+    return lossAve.item()
 
 
-def valid(dataloader, model, local_rank):
+def valid(dataloader, model, local_rank, world_size):
     total = 0
     sum_loss = 0
 
@@ -177,12 +186,16 @@ def valid(dataloader, model, local_rank):
         loss = losses.item()
 
         total += batch
-        sum_loss += loss
+        sum_loss += losses #loss
 
-    return sum_loss / total
+    loss = sum_loss/total
+    dist.all_reduce(loss)  #sum up the loss
+    lossAve = loss/world_size
+
+    return lossAve.item()
 
 
-def mIoU(dataloader, model, local_rank, numDisplay=2):
+def mIoU(dataloader, model, local_rank, world_size, numDisplay=2):
 
     total = 0
     sum_miou = 0
@@ -217,7 +230,7 @@ def mIoU(dataloader, model, local_rank, numDisplay=2):
     return sum_miou / total
 
 
-def mAP(dataloader, model, local_rank, numDisplay=2):
+def mAP(dataloader, model, local_rank, world_size, numDisplay=2):
 
     total = 0
     sum_ap = 0
