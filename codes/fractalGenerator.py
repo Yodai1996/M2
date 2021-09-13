@@ -191,47 +191,6 @@ def make_abnormals(ll, normal_dir, abnormal_dir, segMask_dir, lb, ub, res, octav
     return parameterInfo, bboxInfo
 
 
-
-# def make_abnormals(ll, normal_dir, abnormal_dir, segMask_dir, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea):
-#     #最大腫瘍を２つつけるようにする。とりあえず確率0.5で１個か２個にすればいいか。
-#     prob = 0.5
-#
-#     # こっちは縦につなげるか。見やすいので。
-#     parameterInfo = []
-#     parameterInfo.append(["file", "index", "lb", "ub", "res", "octaves", "persistence", "lacunarity", "scale", "smoothArea", "cent_x", "cent_y", "r"])
-#
-#     bboxInfo = []
-#     bboxInfo.append(["file", "left1", "top1", "right1", "bottom1", "left2", "top2", "right2", "bottom2"]) #x,y,xmax,ymax #こっちは横につなげよう。無ければNoneでよい.
-#
-#     index = 0
-#     for file in ll:
-#         #open the normal image
-#         img = Image.open(normal_dir + "/" + file)
-#         newImg = img.copy() #copy
-#         assert(img.size[0]==img.size[1])
-#         size = img.size[0]
-#         segMaskImg = Image.new("L", (img.size[0], img.size[1]), 0)
-#
-#         #make abnormals
-#         newImg, segMaskImg, left1, top1, right1, bottom1, centX, centY, r = make_abnormal(newImg, segMaskImg, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea)
-#         parameterInfo.append([file, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea, centX, centY, r])  # ほかのパラメタも一応入れとく。
-#         index += 1
-#         if random.random() < prob:
-#             #1個だけ
-#             bboxInfo.append([file, left1, top1, right1, bottom1, None, None, None, None])
-#         else:
-#             #２個目もつける
-#             newImg, segMaskImg, left2, top2, right2, bottom2, centX, centY, r= make_abnormal(newImg, segMaskImg, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea)
-#             parameterInfo.append([file, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea, centX, centY, r])  # ほかのパラメタも一応入れとく。
-#             index += 1
-#             bboxInfo.append([file, left1, top1, right1, bottom1, left2, top2, right2, bottom2])
-#
-#         newImg.save(abnormal_dir + "/" + file)
-#         segMaskImg.save(segMask_dir + "/" + file)
-#
-#     return parameterInfo, bboxInfo
-
-
 if __name__ == '__main__':
     args = sys.argv
     normalIdList, normalDir, abnormalDir, segMaskDir, saveParaPath, saveBboxPath = args[1], args[2], args[3], args[4], args[5], args[6]
@@ -266,43 +225,3 @@ if __name__ == '__main__':
     with open(saveBboxPath, 'w') as f:
         writer = csv.writer(f, lineterminator="\n")
         writer.writerows(bboxInfo) #instead of writerow
-
-
-# もともと動くコード
-# if __name__ == '__main__':
-#     args = sys.argv
-#     train_dir = "/lustre/gk36/k77012/M2/data/train_" + args[1]
-#     normal_dir = train_dir + "/0_normal1000"
-#     abnormal_dir = train_dir + "/1_abnormal1000_" + args[1]
-#     segMask_dir = "/lustre/gk36/k77012/M2/data/Mask/mask_" + args[1]
-#
-#     # file name index
-#     with open('/lustre/gk36/k77012/M2/normalIdList1000.csv', 'r') as f:
-#         read = csv.reader(f)
-#         ll = list(read)[0]
-#     f.close()
-#
-#     lb=int(args[2])
-#     ub=int(args[3])
-#     res=int(args[4])
-#     octaves=int(args[5])
-#     persistence=float(args[6])
-#     lacunarity=int(args[7])
-#     scale=float(args[8])
-#     smoothArea=float(args[9])
-#
-#     # make abnormal data
-#     print("begin to make abnormal images")
-#     #parameterInfo, bboxInfo = make_abnormal(ll, normal_dir, abnormal_dir, segMask_dir, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea)
-#     parameterInfo, bboxInfo = make_abnormals(ll, normal_dir, abnormal_dir, segMask_dir, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea)
-#     print("finish making abnormal images")
-#
-#     #store the information about parameters to reproduce the same images
-#     with open('/lustre/gk36/k77012/M2/simDataInfo/paraInfo/parameterInfo_{}.csv'.format(args[1]), 'w') as f:
-#         writer = csv.writer(f, lineterminator="\n")
-#         writer.writerows(parameterInfo) #instead of writerow
-#
-#     #store the information about bbox to use it in model learning
-#     with open('/lustre/gk36/k77012/M2/simDataInfo/bboxInfo/bboxInfo_{}.csv'.format(args[1]), 'w') as f:
-#         writer = csv.writer(f, lineterminator="\n")
-#         writer.writerows(bboxInfo) #instead of writerow
