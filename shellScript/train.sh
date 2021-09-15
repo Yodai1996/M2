@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -q h-regular
-#PBS -l select=2
+#PBS -l select=1
 #PBS -W group_list=gk36
 #PBS -l walltime=10:00:00
 #PBS -o train.txt
@@ -18,21 +18,34 @@ cd "${PBS_O_WORKDIR}" || exit
 #trainBbox='abnormal1000_bboxinfo.csv'
 #validBbox='abnormal5012_bboxinfo.csv'
 
-trainPath='sim1_abnormal1000' #'train1/1_abnormal1000_1'
-validPath='sim1_abnormal200' #'train1/1_abnormal200_1'
-trainBbox='simDataInfo/bboxInfo/bboxInfo_1.csv'
-validBbox='simDataInfo/bboxInfo/bboxInfo1_200.csv'
+#trainPath='sim1_abnormal1000' #'train1/1_abnormal1000_1'
+#validPath='sim1_abnormal200' #'train1/1_abnormal200_1'
+#trainBbox='simDataInfo/bboxInfo/bboxInfo1_1000.csv' #'simDataInfo/bboxInfo/bboxInfo_1.csv'
+#validBbox='simDataInfo/bboxInfo/bboxInfo1_200.csv'
 
 #trainPath='sim2_abnormal1000' #'train1/1_abnormal1000_1'
 #validPath='sim2_abnormal200' #'train1/1_abnormal200_1'
 #trainBbox='simDataInfo/bboxInfo/bboxInfo_2.csv'
 #validBbox='simDataInfo/bboxInfo/bboxInfo2_200.csv'
 
-testPath='AbnormalDir'
-testBbox='abnormal_bboxinfo.csv'
+#trainPath='sim5_1000' #'train1/1_abnormal1000_1'
+#validPath='sim5_200' #'train1/1_abnormal200_1'
+#trainBbox='simDataInfo/bboxInfo/bboxInfo5_1000.csv' #'simDataInfo/bboxInfo/bboxInfo_1.csv'
+#validBbox='simDataInfo/bboxInfo/bboxInfo5_200.csv'
+
+#testPath='AbnormalDir'
+#testBbox='abnormal_bboxinfo.csv'
+
+trainPath='sim5_1000' #'train1/1_abnormal1000_1'
+trainBbox='simDataInfo/bboxInfo/bboxInfo5_1000.csv' #'simDataInfo/bboxInfo/bboxInfo_1.csv'
+validPath='AbnormalDir10'
+validBbox='abnormal10_bboxinfo.csv'
+
+testPath='AbnormalDir5012'
+testBbox='abnormal5012_bboxinfo.csv'
 
 
-epoch=25
+epoch=40
 batch_size=64
 numSamples=50
 

@@ -157,6 +157,12 @@ else:  #modelName=="fasterRCNN"
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes).to(device)
 
+
+###こんな感じの事をしたい。修正中。
+### load the model trained at the previous step.
+PATH = "/lustre/gk36/k77012/M2/model/minmax/model{}".format(version-1)  #version-1 represents the previous step
+model.load_state_dict(torch.load(PATH))
+
 # training
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
@@ -190,6 +196,12 @@ for epoch in range(num_epoch):
 
 print("best_mIoU:{:.4f},   best_mAP:{:.4f}".format(best_miou, best_map))
 
+
+#save the model since we might use it later
+PATH = "/lustre/gk36/k77012/M2/model/minmax/model{}".format(version)
+torch.save(best_miou_model, PATH) #best_miou_model
+model.load_state_dict(torch.load(PATH)) #visualizationのときにもこのbest modelを用いることにする。
+
 #modify and redefine again to use in visualization
 trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
@@ -200,10 +212,6 @@ visualize(model, trainloader, df, numSamples, saveDir + "train/", numDisplay)
 visualize(model, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
 visualize(model, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
 
-
-#save the model since we might use it later
-PATH = "/lustre/gk36/k77012/M2/model/minmax/model{}".format(version)
-torch.save(best_miou_model, PATH)
 
 # save the values and score for the next iteration
 fileHandle = open("/lustre/gk36/k77012/M2/bo_io/in/" + boText, "a")
