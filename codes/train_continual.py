@@ -19,12 +19,6 @@ from matplotlib.patches import Rectangle
 from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP
 
 args = sys.argv
-# trainPath, validPath, trainBbox, validBbox, modelName = args[1], args[2], args[3], args[4], args[5],
-# num_epoch = int(args[6])
-# batch_size = int(args[7])
-# numSamples = int(args[8])
-# pretrained = args[9]
-
 trainPath, validPath, testPath, trainBbox, validBbox, testBbox, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7]
 num_epoch = int(args[8])
 batch_size = int(args[9])
@@ -80,11 +74,24 @@ if version >= 2:
     PATH = "/lustre/gk36/k77012/M2/model/continual/model{}".format(version-1)  #version-1 represents the previous step
     model.load_state_dict(torch.load(PATH))
 
+#will be used to check catastrophic forgetting
+prevList = []
+for i in range(1,version):  #[1,version)
+    prevDir = "/lustre/gk36/k77012/M2/data/sim{}_200/".format(i)  #sim{}_200でもいいかも
+    df_prev = pd.read_csv("/lustre/gk36/k77012/M2/simDataInfo/bboxInfo/bboxInfo{}_200.csv".format(i)) #200でもいいかも
+    df_prev = preprocess_df(df_prev, originalSize, size, prevDir)
+    prevset = MyDataset(df_prev, transform=transform)
+    prevloader = DataLoader(prevset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
+    prevList.append(prevloader)
+
+
 # training
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
 best_miou = 0
+best_epoch = None
 best_map = 0
+test_miou = 0
 best_miou_model = None
 
 for epoch in range(num_epoch):
@@ -106,13 +113,26 @@ for epoch in range(num_epoch):
         if miou > best_miou:
             best_miou = miou
             best_miou_model = copy.deepcopy(model.state_dict())
+            test_miou = testmiou #update the test performance
+            best_epoch = epoch
 
         best_map = max(best_map, map)
 
-    print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap))
-    #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map))
+    #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap))
+    print(
+        "epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.3f}  valid_mAP:{:.3f}   test_loss:{:.4f}  test_mIoU:{:.3f}  test_mAP:{:.3f}".format(
+            epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap), end="  ")
 
-print("best_mIoU:{:.4f},   best_mAP:{:.4f}".format(best_miou, best_map))
+    #check catastrophic forgetting
+    for i,loader in enumerate(prevList):
+        sim_i_miou = mIoU(loader, model, numDisplay)
+        print("sim{}mIoU:{:.3f}".format(i+1, sim_i_miou), end="  ")
+
+    #改行
+    print()
+
+print("best_mIoU:{:.3f}  (epoch:{}),  best_mAP:{:.3f}".format(best_miou, best_epoch+1, best_map))
+print("test_mIoU:{:.3f}".format(test_miou))
 
 #save the model since we might use it later
 PATH = "/lustre/gk36/k77012/M2/model/continual/model{}".format(version)

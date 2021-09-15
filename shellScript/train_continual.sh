@@ -18,7 +18,7 @@ cd "${PBS_O_WORKDIR}" || exit
 #trainBbox='abnormal1000_bboxinfo.csv'
 #validBbox='abnormal5012_bboxinfo.csv'
 
-i=1
+i=5
 trainPath="sim${i}_1000" #'train1/1_abnormal1000_1'
 validPath="sim${i}_200" #'train1/1_abnormal200_1'
 trainBbox="simDataInfo/bboxInfo/bboxInfo${i}_1000.csv" #'simDataInfo/bboxInfo/bboxInfo_1.csv'
@@ -42,7 +42,7 @@ testPath='AbnormalDir5012'
 testBbox='abnormal5012_bboxinfo.csv'
 
 
-epoch=40
+epoch=30
 batch_size=64
 numSamples=50
 
@@ -54,6 +54,6 @@ mkdir -p "/lustre/gk36/k77012/M2/result/continual/${trainPath}_${validPath}_${mo
 mkdir -p "/lustre/gk36/k77012/M2/result/continual/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}/test"
 
 
-python ../codes/train_continual.py ${trainPath} ${validPath} ${testPath} ${trainBbox} ${validBbox} ${testBbox} ${model} ${epoch} ${batch_size} ${numSamples} ${i}>> ../train_log/model${version}_${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}.txt
+python ../codes/train_continual.py ${trainPath} ${validPath} ${testPath} ${trainBbox} ${validBbox} ${testBbox} ${model} ${epoch} ${batch_size} ${numSamples} ${i}>> ../train_log/continual/model${version}_${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}.txt
 #python ../codes/train.py ${trainPath} ${validPath} ${trainBbox} ${validBbox} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained}>> ../train_log/${trainPath}_${validPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
 echo 'training_finished'
