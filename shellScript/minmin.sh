@@ -33,7 +33,7 @@ validBbox='abnormal10_bboxinfo.csv'
 testPath='AbnormalDir5012'
 testBbox='abnormal5012_bboxinfo.csv'
 
-for i in 6
+for i in 9 10 11
 do
   ../bo_io/build/suggest --hm --ha --hpopt -a ei --md 7 --mi ../bo_io/in/${boText} >> ../${bufText}
 

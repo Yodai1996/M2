@@ -137,6 +137,7 @@ optimizer = optim.Adam(model.parameters(), lr=lr)
 
 best_miou, best_map = 0, 0
 best_miou_model = None
+test_miou = 0
 
 for epoch in range(num_epoch):
 
@@ -157,6 +158,7 @@ for epoch in range(num_epoch):
         if miou > best_miou:
             best_miou = miou
             best_miou_model = copy.deepcopy(model.state_dict())
+            test_miou = testmiou #update the test performance
 
         best_map = max(best_map, map)
 
@@ -164,6 +166,7 @@ for epoch in range(num_epoch):
     #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map))
 
 print("best_mIoU:{:.4f},   best_mAP:{:.4f}".format(best_miou, best_map))
+print("test_mIoU:{:.4f}".format(test_miou))
 
 
 #save the model since we might use it later
