@@ -262,3 +262,40 @@ def mAP(dataloader, model, numDisplay=2):
         total += batch
 
     return sum_ap / total
+
+
+def returnFnIndices(dataloader, model, numDisplay, thres=0):
+
+    total = 0
+    fn_indices = []
+    model.eval()
+
+    for images, targets in dataloader:
+        images = list(image.to(device) for image in images)
+        batch = len(images)
+        outputs = model(images)
+
+        #calculate iou with targets and outputs
+        for i in range(batch):
+            trueBoxes = targets[i]
+            boxes = outputs[i]["boxes"].data.cpu()  #.numpy()
+            scores = outputs[i]["scores"].data.cpu()  #.numpy()
+
+            # filtering by the top numDisplay
+            boxes = boxes[:numDisplay]
+            scores = scores[:numDisplay]
+
+            #deal with when no bbox is predicted. When len(boxes)==0, it should be counted as FN
+            if len(boxes)==0:
+                fn_indices.append(total + i)
+            else: #if len(boxes)>0:
+                # calculate iou with targets and outputs
+                bboxIou = box_iou(boxes, trueBoxes)
+                maxIou = bboxIou.max(axis=0).values.numpy()  #calculate the maximum IoU for each trueBox
+                meanIou = maxIou.mean()  #sum(maxIou)/len(maxIou)
+                if meanIou <= thres:
+                    fn_indices.append(total + i)
+
+        total += batch
+
+    return fn_indices
