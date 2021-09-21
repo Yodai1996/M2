@@ -33,9 +33,12 @@ validBbox='abnormal10_bboxinfo.csv'
 testPath='AbnormalDir5012'
 testBbox='abnormal5012_bboxinfo.csv'
 
-for i in 9 10 11
+for i in 21 22 23
 do
-  ../bo_io/build/suggest --hm --ha --hpopt -a ei --md 7 --mi ../bo_io/in/${boText} >> ../${bufText}
+  cd ../bo_io
+  ./build/suggest --hm --ha --hpopt -a ei --md 7 --mi ./in/${boText} >> ../${bufText}
+
+  #../bo_io/build/suggest --hm --ha --hpopt -a ei --md 7 --mi ../bo_io/in/${boText} >> ../${bufText}
 
   trainPath="sim${i}_${m}" #abnormalDirと同一なため、引数として渡す必要は無い.
   #trainBbox="simDataInfo/bboxInfo/minmin/bboxInfo${i}_${m}.csv" #saveBboxPathと同一なため本来は不要だが、実装上これも引数として渡すことにする。(これは引数としても不要そう。)

@@ -2,6 +2,7 @@ import sys
 import pandas as pd
 from skimage import io, transform
 from PIL import Image, ImageDraw, ImageFilter
+import copy, csv
 
 import torch
 from torch import nn, optim
@@ -76,6 +77,9 @@ else:  #modelName=="fasterRCNN"
 # training
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
+best_miou = 0
+best_map = 0
+
 for epoch in range(num_epoch):
 
     train_loss = train(trainloader, model, optimizer)
@@ -91,8 +95,13 @@ for epoch in range(num_epoch):
         testmiou = mIoU(testloader, model, numDisplay)
         testmap = mAP(testloader, model, numDisplay)
 
+        best_miou = max(best_miou, miou)
+        best_map = max(best_map, map)
+
     print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap))
     #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map))
+
+print("best_mIoU:{:.4f},   best_mAP:{:.4f}".format(best_miou, best_map))
 
 #modify and redefine again to use in visualization
 trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)

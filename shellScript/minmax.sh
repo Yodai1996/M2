@@ -37,14 +37,17 @@ pretrained='pretrained'  #'unpretrained'
 testPath='AbnormalDir5012' #'AbnormalDir'でもよい
 testBbox='abnormal5012_bboxinfo.csv' #'abnormal_bboxinfo.csv'
 
-for i in 6
+for i in 10 11 12
 do
-  ../bo_io/build/suggest --hm --ha --hpopt -a ei --md 7 --mi ../bo_io/in/${boText} >> ../${bufText}
+  cd ../bo_io
+  ./build/suggest --hm --ha --hpopt -a ei --md 7 --mi ./in/${boText} >> ../${bufText}
+
+  #../bo_io/build/suggest --hm --ha --hpopt -a ei --md 7 --mi ../bo_io/in/${boText} >> ../${bufText}
 
   trainPath="sim${i}_${numTrain}" #abnormalDirと同一なため、引数として渡す必要は無い.
   abnormalDir="/lustre/gk36/k77012/M2/data/minmax/${trainPath}/"
   segMaskDir="/lustre/gk36/k77012/M2/SegmentationMask/minmax/mask${i}_${numTrain}/"
-  saveParaPath="/lustre/gk36/k77012/M2/simDataInfo/paraInfo/minmax/parameterInfo${i}_${numTrain}.csv"
+  saveParaPath="/lustre/gk36/k77012/M2/simDataInfo/paraInfo/minmax/parameterInfo${i}_${numTrain}.csv" #これらのDirは事前に作っておく必要がある。
   saveBboxPath="/lustre/gk36/k77012/M2/simDataInfo/bboxInfo/minmax/bboxInfo${i}_${numTrain}.csv"
 
   mkdir -p ${abnormalDir} #親ディレクトリが無い場合は全て作る、＆、フォルダがすでに存在する場合は何もしない
