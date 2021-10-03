@@ -201,14 +201,45 @@ if __name__ == '__main__':
         ll = list(read)[0]
     f.close()
 
-    lb=int(args[7])
-    ub=int(args[8])
-    res=int(args[9])
-    octaves=int(args[10])
-    persistence=float(args[11])
-    lacunarity=int(args[12])
-    scale=float(args[13])
-    smoothArea=float(args[14])
+    if len(args)>10:
+        #values are given by hands
+        lb=int(args[7])
+        ub=int(args[8])
+        res=int(args[9])
+        octaves=int(args[10])
+        persistence=float(args[11])
+        lacunarity=int(args[12])
+        scale=float(args[13])
+        smoothArea=float(args[14])
+    elif len(args)<=8:
+        #len(args)==8
+        #values are given through bufText
+        bufText=args[7]
+
+        # read the recommended next values from Gaussian Process.
+        fileHandle = open(bufText, "r")
+        lineList = fileHandle.readlines()
+        fileHandle.close()
+        last_lines = lineList[-1]
+
+        if last_lines[-1] == "\n":
+            last_lines = last_lines[:-2]
+
+        values = last_lines.split(",")
+        values = [float(i) for i in values]
+
+        # preprocess
+        lb = int(30 + 50 * values[0])  # [30,80]
+        ub = int(100 + 120 * values[1])  # [100,220]
+        res = int(2 + 4 * values[2])
+        octaves = 5  # fixed
+        persistence = 0.2 + 0.8 * values[3]  # [0.2,1]
+        lacunarity = int(2 + 3 * values[4])
+        scale = 0.1 + 0.9 * values[5]  # [0.1,1]
+        smoothArea = 0.2 + 0.6 * values[6]  # [0.2,0.8]
+    else:
+        print("arguments error happening")
+        exit()
 
     # make abnormal data
     print("begin to make abnormal images")
