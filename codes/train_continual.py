@@ -75,16 +75,16 @@ if version >= 2:
     PATH = "/lustre/gk36/k77012/M2/model/{}/model{}".format(modelPath, version-1)  #version-1 represents the previous step
     model.load_state_dict(torch.load(PATH))
 
-# #will be used to check catastrophic forgetting
-# prevList = []
-# for i in range(1,version):  #[1,version)
-#     prevDir = "/lustre/gk36/k77012/M2/data/sim{}_200/".format(i)  #sim{}_200でもいいかも
-#     df_prev = pd.read_csv("/lustre/gk36/k77012/M2/simDataInfo/bboxInfo/bboxInfo{}_200.csv".format(i)) #200でもいいかも
-#     df_prev = preprocess_df(df_prev, originalSize, size, prevDir)
-#     prevset = MyDataset(df_prev, transform=transform)
-#     prevloader = DataLoader(prevset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
-#     prevList.append(prevloader)
-#
+#will be used to check catastrophic forgetting
+prevList = []
+for i in range(1,version):  #[1,version)
+    prevDir = "/lustre/gk36/k77012/M2/data/{}/ver{}_200/".format(modelPath, i)  #"/lustre/gk36/k77012/M2/data/sim{}_200/".format(i)
+    df_prev = pd.read_csv("/lustre/gk36/k77012/M2/simDataInfo/bboxInfo/{}/bboxInfo{}_200.csv".format(modelPath, i))  #pd.read_csv("/lustre/gk36/k77012/M2/simDataInfo/bboxInfo/bboxInfo{}_200.csv".format(i))
+    df_prev = preprocess_df(df_prev, originalSize, size, prevDir)
+    prevset = MyDataset(df_prev, transform=transform)
+    prevloader = DataLoader(prevset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
+    prevList.append(prevloader)
+
 
 # training
 optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -124,10 +124,10 @@ for epoch in range(num_epoch):
         "epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.3f}  valid_mAP:{:.3f}   test_loss:{:.4f}  test_mIoU:{:.3f}  test_mAP:{:.3f}".format(
             epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap), end="  ")
 
-    # #check catastrophic forgetting
-    # for i,loader in enumerate(prevList):
-    #     sim_i_miou = mIoU(loader, model, numDisplay)
-    #     print("sim{}mIoU:{:.3f}".format(i+1, sim_i_miou), end="  ")
+    #check catastrophic forgetting
+    for i,loader in enumerate(prevList):
+        sim_i_miou = mIoU(loader, model, numDisplay)
+        print("sim{}mIoU:{:.3f}".format(i+1, sim_i_miou), end="  ")
 
     #改行
     print()
