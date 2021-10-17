@@ -156,6 +156,38 @@ def train(dataloader, model, optimizer):
     return sum_loss / total
 
 
+def trainWithCls(dataloader, model, optimizer):
+    total = 0
+    sum_loss = 0
+
+    #training
+    model.train()
+    for images, bboxes in dataloader:
+        images = list(image.to(device) for image in images)
+        batch = len(images)
+
+        targets = [{"boxes": bbox.to(device), "labels": torch.ones(len(bbox), dtype=torch.int64).to(device)} for bbox in bboxes]
+
+        def closure():
+            # return from the model
+            loss_dict = model(images, targets)  # 返り値はdict[tensor]でlossが入ってる。（RPNとRCNN両方のloss）
+            losses = sum(loss for loss in loss_dict.values())
+            #loss = losses.item()
+
+            optimizer.zero_grad()
+            losses.backward()
+            return losses #loss
+
+        #loss = optimizer.step(closure)
+        losses = optimizer.step(closure)
+        loss = losses.item()
+
+        total += batch
+        sum_loss += loss
+
+    return sum_loss / total
+
+
 def valid(dataloader, model):
     total = 0
     sum_loss = 0
