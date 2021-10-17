@@ -40,10 +40,10 @@ model='SSD'
 #first, change directory
 cd ../bo_io
 
-for i in 2
+for i in 2 3 4
 do
-  normalDir="/lustre/gk36/k77012/M2/data/NormalDir${numInfer}/"
-  normalIdList="/lustre/gk36/k77012/M2/normalIdList${numInfer}.csv"
+  normalDirForInfer="/lustre/gk36/k77012/M2/data/NormalDir${numInfer}/"
+  normalIdListForInfer="/lustre/gk36/k77012/M2/normalIdList${numInfer}.csv"
   boText="/lustre/gk36/k77012/M2/bo_io/in/adversarialBO/iter${i}.txt"
 
   #inference for the first 5 intial points
@@ -72,7 +72,7 @@ do
     mkdir -p ${paraDir}
     mkdir -p ${bboxDir}
 
-    python ../codes/fractalGenerator.py ${normalIdList} ${normalDir} ${abnormalDir} ${segMaskDir} ${paraPath} ${bboxPath} ${bufText} #bufText is used to know the X values.
+    python ../codes/fractalGenerator.py ${normalIdListForInfer} ${normalDirForInfer} ${abnormalDir} ${segMaskDir} ${paraPath} ${bboxPath} ${bufText} #bufText is used to know the X values.
 
     python ../codes/inference.py $i ${bufText} ${abnormalDir} ${bboxPath} ${boText} #i is used to identify the model to load, bufText is used to determine the X values. 結果をboTextに格納.
 
