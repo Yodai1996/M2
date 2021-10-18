@@ -120,7 +120,7 @@ do
   mkdir -p "/lustre/gk36/k77012/M2/train_log/adversarialBO/${optimizer}/"
 
   #training the model
-  python ../codes/train_continual2.py ${abnormalDir} ${abnormalDir2} ${testPath} ${bboxPath} ${bboxPath2} ${testBbox} ${modelPath} ${epoch} ${batch_size} ${numSamples} ${i} ${savePath} "adversarialBO" ${optimizer} >> ../train_log/adversarialBO/${optimizer}/model${i}_${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}.txt
+  python ../codes/train_continual.py ${abnormalDir} ${abnormalDir2} ${testPath} ${bboxPath} ${bboxPath2} ${testBbox} ${modelPath} ${epoch} ${batch_size} ${numSamples} ${i} ${savePath} "adversarialBO" ${optimizer} >> ../train_log/adversarialBO/${optimizer}/model${i}_${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}.txt
   echo $i'_finished'
 
 done
