@@ -20,7 +20,7 @@ optimizer='VSGD'
 
 #for otimizers' epsilon
 variability='0.01' #0.1 #starting epsilon
-decayRate=1 #0.9 #how much we decay the variability
+decayRate='1.0' #0.9 #how much we decay the variability
 
 bufText="/lustre/gk36/k77012/M2/buf_adversarialBO_${optimizer}_variability${variability}_decay${decayRate}.txt" #use the same text as it is just a buffer
 bestText="/lustre/gk36/k77012/M2/best_adversarialBO_${optimizer}_variability${variability}_decay${decayRate}.txt"

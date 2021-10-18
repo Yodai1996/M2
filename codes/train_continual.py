@@ -26,7 +26,7 @@ numSamples = int(args[11])
 version = int(args[12])
 savePath, optimizerName = args[13], args[14]
 if optimizerName=='VSGD':
-    variability, decayRate = args[15], float(args[16])
+    variability, decayRate = float(args[15]), float(args[16])
     print(decayRate)
 
 trainDir, validDir = trainPath, validPath
