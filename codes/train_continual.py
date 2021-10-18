@@ -19,14 +19,15 @@ from matplotlib.patches import Rectangle
 from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, trainWithCls
 
 args = sys.argv
-trainPath, validPath, testPath, trainBbox, validBbox, testBbox, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7]
-num_epoch = int(args[8])
-batch_size = int(args[9])
-numSamples = int(args[10])
-version = int(args[11])
-savePath, modelPath, optimizerName = args[12], args[13], args[14]
+trainPath, validPath, testPath, trainBbox, validBbox, testBbox, modelPath, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]
+num_epoch = int(args[9])
+batch_size = int(args[10])
+numSamples = int(args[11])
+version = int(args[12])
+savePath, optimizerName = args[13], args[14]
 if optimizerName=='VSGD':
-    variability, decayRate = args[15], args[16]
+    variability, decayRate = args[15], float(args[16])
+    print(decayRate)
 
 trainDir, validDir = trainPath, validPath
 testDir = "/lustre/gk36/k77012/M2/data/{}/".format(testPath)
@@ -100,7 +101,7 @@ for i in range(1,version):  #[1,version)
 if optimizerName=='VSGD':
     from optimizers.vsgd import VSGD
     num_iters = len(trainloader) #it will be the ceiling of num_data/batch_size
-    variability = variability * (decayRate**version) #by default, variavility=0.01, decayRate=1. #reduce the epsilon by calculating variability * (decayRate)**version
+    variability = variability * (decayRate**version) #by default, variability=0.01, decayRate=1. #reduce the epsilon by calculating variability * (decayRate)**version
     optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
 elif optimizerName=="SAM":
     from optimizers.sam import SAMSGD
