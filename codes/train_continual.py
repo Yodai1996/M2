@@ -16,7 +16,7 @@ import copy
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, trainWithCls
 
 args = sys.argv
 trainPath, validPath, testPath, trainBbox, validBbox, testBbox, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7]
@@ -24,13 +24,15 @@ num_epoch = int(args[8])
 batch_size = int(args[9])
 numSamples = int(args[10])
 version = int(args[11])
-savePath, modelPath = args[12], args[13] #added
-trainDir = "/lustre/gk36/k77012/M2/data/{}/{}/".format(modelPath, trainPath)
-validDir = "/lustre/gk36/k77012/M2/data/{}/{}/".format(modelPath, validPath)
+savePath, modelPath, optimizerName = args[12], args[13], args[14]
+if optimizerName=='VSGD':
+    variability, decayRate = args[15], args[16]
+
+trainDir, validDir = trainPath, validPath
 testDir = "/lustre/gk36/k77012/M2/data/{}/".format(testPath)
-saveDir = "/lustre/gk36/k77012/M2/result/{}/".format(savePath) #"/lustre/gk36/k77012/M2/result/continual/{}_{}_{}_batch{}_epoch{}/".format(trainPath, validPath, modelName, batch_size, num_epoch) #saveDir = "/lustre/gk36/k77012/M2/result/{}_{}_{}_batch{}_epoch{}/".format(trainPath, validPath, modelName, batch_size, num_epoch)
-df = pd.read_csv(trainBbox) #pd.read_csv("/lustre/gk36/k77012/M2/{}".format(trainBbox))
-df_valid = pd.read_csv(validBbox) #pd.read_csv("/lustre/gk36/k77012/M2/{}".format(validBbox))
+saveDir = "/lustre/gk36/k77012/M2/result/{}/".format(savePath)
+df = pd.read_csv(trainBbox)
+df_valid = pd.read_csv(validBbox)
 df_test = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(testBbox))
 
 # hypara
@@ -72,22 +74,40 @@ else:  #modelName=="fasterRCNN"
 
 #load the previously trained model
 if version >= 2:
-    PATH = "/lustre/gk36/k77012/M2/model/{}/model{}".format(modelPath, version-1)  #version-1 represents the previous step
+    PATH = modelPath + "model" + str(version-1) #"{}/model{}".format(modelPath, version-1) #"/lustre/gk36/k77012/M2/model/{}/{}/model{}".format(modelPath, optimizerName, version - 1) #version-1 represents the previous step
     model.load_state_dict(torch.load(PATH))
 
 #will be used to check catastrophic forgetting
 prevList = []
+barIndexForDir, barIndexForBbox = None, None
+#we have to use the last _ exisiting in the string, as follows.
+for i, v in enumerate(validPath):
+    if v=="_": #find the index representing the bar
+        barIndexForDir = i
+for i, v in enumerate(validBbox):
+    if v=="_": #find the index representing the bar
+        barIndexForBbox = i
+
 for i in range(1,version):  #[1,version)
-    prevDir = "/lustre/gk36/k77012/M2/data/{}/ver{}_200/".format(modelPath, i)  #"/lustre/gk36/k77012/M2/data/sim{}_200/".format(i)
-    df_prev = pd.read_csv("/lustre/gk36/k77012/M2/simDataInfo/bboxInfo/{}/bboxInfo{}_200.csv".format(modelPath, i))  #pd.read_csv("/lustre/gk36/k77012/M2/simDataInfo/bboxInfo/bboxInfo{}_200.csv".format(i))
+    prevDir = validPath[:barIndexForDir-1] + str(i) + validPath[barIndexForDir:]
+    df_prev = pd.read_csv(validBbox[:barIndexForBbox-1] + str(i) + validBbox[barIndexForBbox:])
     df_prev = preprocess_df(df_prev, originalSize, size, prevDir)
     prevset = MyDataset(df_prev, transform=transform)
     prevloader = DataLoader(prevset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
     prevList.append(prevloader)
 
-
 # training
-optimizer = optim.Adam(model.parameters(), lr=lr)
+if optimizerName=='VSGD':
+    from optimizers.vsgd import VSGD
+    num_iters = len(trainloader) #it will be the ceiling of num_data/batch_size
+    variability = variability * (decayRate**version) #by default, variavility=0.01, decayRate=1. #reduce the epsilon by calculating variability * (decayRate)**version
+    optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
+elif optimizerName=="SAM":
+    from optimizers.sam import SAMSGD
+    optimizer = SAMSGD(model.parameters(), lr=lr, rho=0.05)
+else:
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+
 
 best_miou = 0
 best_epoch = None
@@ -97,7 +117,10 @@ best_miou_model = None
 
 for epoch in range(num_epoch):
 
-    train_loss = train(trainloader, model, optimizer)
+    if optimizerName == "SAM":
+        train_loss = trainWithCls(trainloader, model, optimizer)  #SAMの場合はclosureにしないといけなそう.
+    else:
+        train_loss = train(trainloader, model, optimizer)
 
     # validation
     with torch.no_grad():
@@ -136,7 +159,7 @@ print("best_mIoU:{:.3f}  (epoch:{}),  best_mAP:{:.3f}".format(best_miou, best_ep
 print("test_mIoU:{:.3f}".format(test_miou))
 
 #save the model since we might use it later
-PATH = "/lustre/gk36/k77012/M2/model/{}/model{}".format(modelPath, version)
+PATH = modelPath + "model" + str(version)  #"{}/model{}".format(modelPath, version) #"/lustre/gk36/k77012/M2/model/{}/model{}".format(modelPath, version)
 torch.save(best_miou_model, PATH) #best_miou_model
 model.load_state_dict(torch.load(PATH)) #visualizationのときにもこのbest modelを用いることにする。
 
