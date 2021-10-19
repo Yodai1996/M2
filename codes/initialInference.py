@@ -21,14 +21,14 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice
 
 '''
 just for inference
 '''
 
 args = sys.argv
-version, iter, abnormalDir, bboxPath, boText = int(args[1]), int(args[2]), args[3], args[4], args[5]
+version, iter, abnormalDir, bboxPath, boText, modelPath, metric = int(args[1]), int(args[2]), args[3], args[4], args[5], args[6], args[7]
 
 valueList = [[0.6, 0.4166666666666667, 0.4, 0.49999999999999994, 0.59, 0.4444444444444445, 0.3333333333333333],
              [0.8, 0.6666666666666666, 0.7, 0.37499999999999994, 0.45, 0.2222222222222222, 0.8333333333333331],
@@ -87,19 +87,19 @@ else:  #modelName=="fasterRCNN"
 
 #load the previously trained model
 if version >= 2:
-    PATH = "/lustre/gk36/k77012/M2/model/adversarialBO/model{}".format(version-1)  #version-1 represents the previous step
+    PATH = modelPath + "model" + str(version-1)
     model.load_state_dict(torch.load(PATH))
 
-# training
-optimizer = optim.Adam(model.parameters(), lr=lr)
-
 with torch.no_grad():
-    miou = mIoU(dataloader, model, numDisplay)
+    if metric == "IoU":
+        infer = mIoU(dataloader, model, numDisplay)
+    else:  # metric=="Dice"
+        infer = mDice(dataloader, model, numDisplay)
 
 # save the values and score for the next iteration
 values = [str(v) for v in values]
 values = ", ".join(values)
 
 fileHandle = open(boText, "a")
-fileHandle.write(values + ", " + str(miou*(-1)) + "\n")  ###adversarialBOなので、マイナスをつけたものを最大化する。
+fileHandle.write(values + ", " + str(infer*(-1)) + "\n")  ###adversarialBOなので、マイナスをつけたものを最大化する。
 fileHandle.close()

@@ -13,10 +13,10 @@ cd "${PBS_O_WORKDIR}" || exit
 
 . /lustre/gk36/k77012/anaconda3/bin/activate pytorch2
 
-#trainPath='AbnormalDir1000'
-#validPath='AbnormalDir5012'
-#trainBbox='abnormal1000_bboxinfo.csv'
-#validBbox='abnormal5012_bboxinfo.csv'
+trainPath='AbnormalDir1000'
+validPath='AbnormalDir4880'
+trainBbox='abnormal1000_bboxinfo.csv'
+validBbox='abnormal4880_bboxinfo.csv'
 
 #trainPath='sim1_abnormal1000' #'train1/1_abnormal1000_1'
 #validPath='sim1_abnormal200' #'train1/1_abnormal200_1'
@@ -36,13 +36,13 @@ cd "${PBS_O_WORKDIR}" || exit
 #testPath='AbnormalDir'
 #testBbox='abnormal_bboxinfo.csv'
 
-trainPath='sim5_1000' #'train1/1_abnormal1000_1'
-trainBbox='simDataInfo/bboxInfo/bboxInfo5_1000.csv' #'simDataInfo/bboxInfo/bboxInfo_1.csv'
-validPath='AbnormalDir10'
-validBbox='abnormal10_bboxinfo.csv'
+#trainPath='sim5_1000' #'train1/1_abnormal1000_1'
+#trainBbox='simDataInfo/bboxInfo/bboxInfo5_1000.csv' #'simDataInfo/bboxInfo/bboxInfo_1.csv'
+#validPath='AbnormalDir10'
+#validBbox='abnormal10_bboxinfo.csv'
 
-testPath='AbnormalDir5012'
-testBbox='abnormal5012_bboxinfo.csv'
+testPath='AbnormalDir5880'
+testBbox='abnormal5880_bboxinfo.csv'
 
 
 epoch=40

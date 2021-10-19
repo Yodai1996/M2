@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice
 
 args = sys.argv
 # trainPath, validPath, trainBbox, validBbox, modelName = args[1], args[2], args[3], args[4], args[5],
@@ -78,6 +78,7 @@ else:  #modelName=="fasterRCNN"
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
 best_miou = 0
+best_mdice = 0
 best_map = 0
 
 for epoch in range(num_epoch):
@@ -91,17 +92,20 @@ for epoch in range(num_epoch):
 
         #calculate performance of mean IoU
         miou = mIoU(validloader, model, numDisplay)
-        map = mAP(validloader, model, numDisplay)
+        mdice = mDice(validloader, model, numDisplay)
+#        map = mAP(validloader, model, numDisplay)
         testmiou = mIoU(testloader, model, numDisplay)
-        testmap = mAP(testloader, model, numDisplay)
+        testmdice= mDice(testloader, model, numDisplay)
+#        testmap = mAP(testloader, model, numDisplay)
 
         best_miou = max(best_miou, miou)
-        best_map = max(best_map, map)
+        best_mdice = max(best_mdice, mdice)
+#        best_map = max(best_map, map)
 
-    print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap))
+    print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mDice:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mDice:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, mdice, test_loss, testmiou, testmdice))
     #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map))
 
-print("best_mIoU:{:.4f},   best_mAP:{:.4f}".format(best_miou, best_map))
+print("best_mIoU:{:.4f},   best_mDice:{:.4f}".format(best_miou, best_mdice))
 
 #modify and redefine again to use in visualization
 trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)

@@ -21,14 +21,14 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice
 
 '''
 just for inference
 '''
 
 args = sys.argv
-version, bufText, abnormalDir, bboxPath, boText = int(args[1]), args[2], args[3], args[4], args[5]
+version, bufText, abnormalDir, bboxPath, boText, modelPath, metric = int(args[1]), args[2], args[3], args[4], args[5], args[6], args[7]
 
 # read the recommended next values from Gaussian Process.
 fileHandle = open(bufText, "r")
@@ -91,15 +91,15 @@ else:  #modelName=="fasterRCNN"
 
 #load the previously trained model
 if version >= 2:
-    PATH = "/lustre/gk36/k77012/M2/model/adversarialBO/model{}".format(version-1)  #version-1 represents the previous step
+    PATH = modelPath + "model" + str(version-1)
     model.load_state_dict(torch.load(PATH))
 
-# training
-optimizer = optim.Adam(model.parameters(), lr=lr)
-
 with torch.no_grad():
-    miou = mIoU(dataloader, model, numDisplay)
+    if metric == "IoU":
+        infer = mIoU(dataloader, model, numDisplay)
+    else:  # metric=="Dice"
+        infer = mDice(dataloader, model, numDisplay)
 
 fileHandle = open(boText, "a")
-fileHandle.write(last_lines + ", " + str(miou*(-1)) + "\n")  ###adversarialBOなので、マイナスをつけたものを最大化する。
+fileHandle.write(last_lines + ", " + str(infer*(-1)) + "\n")  ###adversarialBOなので、マイナスをつけたものを最大化する。
 fileHandle.close()

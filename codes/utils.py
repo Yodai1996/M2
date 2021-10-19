@@ -331,3 +331,75 @@ def returnFnIndices(dataloader, model, numDisplay, thres=0):
         total += batch
 
     return fn_indices
+
+
+
+'''
+calculate dice, referring to the pytorch documentation:
+https://pytorch.org/vision/stable/_modules/torchvision/ops/boxes.html#box_iou
+'''
+
+def _upcast(t):
+    # Protects from numerical overflows in multiplications by upcasting to the equivalent higher type
+    if t.is_floating_point():
+        return t if t.dtype in (torch.float32, torch.float64) else t.float()
+    else:
+        return t if t.dtype in (torch.int32, torch.int64) else t.int()
+
+def box_area(boxes):
+    boxes = _upcast(boxes)
+    return (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+
+def _box_inter_union(boxes1, boxes2):
+    area1 = box_area(boxes1)
+    area2 = box_area(boxes2)
+
+    lt = torch.max(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
+    rb = torch.min(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]
+
+    wh = _upcast(rb - lt).clamp(min=0)  # [N,M,2]
+    inter = wh[:, :, 0] * wh[:, :, 1]  # [N,M]
+
+    union = area1[:, None] + area2 - inter
+
+    return inter, union
+
+
+def box_dice(boxes1, boxes2):
+    inter, union = _box_inter_union(boxes1, boxes2)
+    dice = 2*inter / (inter + union)
+    return dice
+
+
+def mDice(dataloader, model, numDisplay=2):
+
+    total = 0
+    sum_dice = 0
+
+    model.eval()
+    for images, targets in dataloader:
+        images = list(image.to(device) for image in images)
+        batch = len(images)
+        outputs = model(images)
+
+        #calculate dice with targets and outputs
+        for i in range(batch):
+            trueBoxes = targets[i]
+            boxes = outputs[i]["boxes"].data.cpu()  #.numpy()
+            scores = outputs[i]["scores"].data.cpu()  #.numpy()
+
+            # filtering by the top numDisplay
+            boxes = boxes[:numDisplay]
+            scores = scores[:numDisplay]
+
+            #deal with when no bbox is predicted. When len(boxes)==0, sum_dice += 0
+            if len(boxes)>0:
+                # calculate dice with targets and outputs
+                bboxDice = box_dice(boxes, trueBoxes)
+                maxDice = bboxDice.max(axis=0).values.numpy()  #calculate the maximum Dice for each trueBox
+                meanDice = maxDice.mean()
+                sum_dice += meanDice
+
+        total += batch
+
+    return sum_dice / total

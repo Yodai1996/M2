@@ -16,7 +16,7 @@ import copy
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, trainWithCls
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, trainWithCls, mDice
 
 args = sys.argv
 trainPath, validPath, testPath, trainBbox, validBbox, testBbox, modelPath, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]
@@ -24,10 +24,9 @@ num_epoch = int(args[9])
 batch_size = int(args[10])
 numSamples = int(args[11])
 version = int(args[12])
-savePath, optimizerName = args[13], args[14]
+savePath, optimizerName, metric = args[13], args[14], args[15]
 if optimizerName=='VSGD':
-    variability, decayRate = float(args[15]), float(args[16])
-    print(decayRate)
+    variability, decayRate = float(args[16]), float(args[17])
 
 trainDir, validDir = trainPath, validPath
 testDir = "/lustre/gk36/k77012/M2/data/{}/".format(testPath)
@@ -112,9 +111,10 @@ else:
 
 best_miou = 0
 best_epoch = None
-best_map = 0
-test_miou = 0
-best_miou_model = None
+best_mdice = 0
+#best_map = 0
+best_model = None
+test_performance = 0
 
 for epoch in range(num_epoch):
 
@@ -130,38 +130,61 @@ for epoch in range(num_epoch):
 
         #calculate performance of mean IoU
         miou = mIoU(validloader, model, numDisplay)
-        map = mAP(validloader, model, numDisplay)
+        mdice = mDice(validloader, model, numDisplay)
+        #map = mAP(validloader, model, numDisplay)
         testmiou = mIoU(testloader, model, numDisplay)
-        testmap = mAP(testloader, model, numDisplay)
+        testmdice= mDice(testloader, model, numDisplay)
+        #testmap = mAP(testloader, model, numDisplay)
 
         # updathe the best performance
-        if miou > best_miou:
-            best_miou = miou
-            best_miou_model = copy.deepcopy(model.state_dict())
-            test_miou = testmiou #update the test performance
-            best_epoch = epoch
+        if metric=="IoU":
+            #update IoU
+            if miou > best_miou:
+                best_miou = miou
+                best_model = copy.deepcopy(model.state_dict())
+                best_epoch = epoch
+                test_performance = testmiou #update the test performance
+            best_mdice = max(best_mdice, mdice)
+        else: #metric=="Dice"
+            #update dice
+            if mdice > best_mdice:
+                best_mdice = mdice
+                best_model = copy.deepcopy(model.state_dict())
+                best_epoch = epoch
+                test_performance = testmdice #update the test performance
+            best_miou = max(best_miou, miou)
 
-        best_map = max(best_map, map)
+        #best_map = max(best_map, map)
 
-    #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap))
+
     print(
-        "epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.3f}  valid_mAP:{:.3f}   test_loss:{:.4f}  test_mIoU:{:.3f}  test_mAP:{:.3f}".format(
-            epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap), end="  ")
+        "epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.3f}  valid_mDice:{:.3f}   test_loss:{:.4f}  test_mIoU:{:.3f}  test_mDice:{:.3f}".format(
+            epoch + 1, num_epoch, train_loss, valid_loss, miou, mdice, test_loss, testmiou, testmdice), end="  ")
 
     #check catastrophic forgetting
-    for i,loader in enumerate(prevList):
-        sim_i_miou = mIoU(loader, model, numDisplay)
-        print("sim{}mIoU:{:.3f}".format(i+1, sim_i_miou), end="  ")
+    if metric == "IoU":
+        for i,loader in enumerate(prevList):
+            sim_i_miou = mIoU(loader, model, numDisplay)
+            print("sim{}mIoU:{:.3f}".format(i+1, sim_i_miou), end="  ")
+    else:  # metric=="Dice"
+        for i,loader in enumerate(prevList):
+            sim_i_mdice = mDice(loader, model, numDisplay)
+            print("sim{}mDice:{:.3f}".format(i+1, sim_i_mdice), end="  ")
 
     #改行
     print()
 
-print("best_mIoU:{:.3f}  (epoch:{}),  best_mAP:{:.3f}".format(best_miou, best_epoch+1, best_map))
-print("test_mIoU:{:.3f}".format(test_miou))
+#printing the results
+if metric == "IoU":
+    print("best_mIoU:{:.3f}  (epoch:{}),  best_mDice:{:.3f}".format(best_miou, best_epoch + 1, best_mdice))
+    print("test_mIoU:{:.3f}".format(test_performance))
+else: # metric=="Dice"
+    print("best_mDice:{:.3f}  (epoch:{}),  best_mIoU:{:.3f}".format(best_mdice, best_epoch + 1, best_miou))
+    print("test_mDice:{:.3f}".format(test_performance))
 
 #save the model since we might use it later
-PATH = modelPath + "model" + str(version)  #"{}/model{}".format(modelPath, version) #"/lustre/gk36/k77012/M2/model/{}/model{}".format(modelPath, version)
-torch.save(best_miou_model, PATH) #best_miou_model
+PATH = modelPath + "model" + str(version)
+torch.save(best_model, PATH) #best_model
 model.load_state_dict(torch.load(PATH)) #visualizationのときにもこのbest modelを用いることにする。
 
 #modify and redefine again to use in visualization
