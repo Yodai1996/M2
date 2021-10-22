@@ -29,6 +29,9 @@ just for inference
 
 args = sys.argv
 version, iter, abnormalDir, bboxPath, boText, modelPath, metric = int(args[1]), int(args[2]), args[3], args[4], args[5], args[6], args[7]
+if len(args)>8: #curriculumBO
+    start, decayRate = float(args[8]), float(args[9])
+
 
 valueList = [[0.6, 0.4166666666666667, 0.4, 0.49999999999999994, 0.59, 0.4444444444444445, 0.3333333333333333],
              [0.8, 0.6666666666666666, 0.7, 0.37499999999999994, 0.45, 0.2222222222222222, 0.8333333333333331],
@@ -96,10 +99,16 @@ with torch.no_grad():
     else:  # metric=="Dice"
         infer = mDice(dataloader, model, numDisplay)
 
+if len(args)>8: #curriculumBO
+    target = start * (decayRate**version)    #target value in the current curriculum
+    obj_function = -1 * abs(infer - target)  #objective function for this min-max formulation
+else: #adversarialBO
+    obj_function = -1 * infer #as it is adversarialBO, we maximize the value multiplied by -1.
+
 # save the values and score for the next iteration
 values = [str(v) for v in values]
 values = ", ".join(values)
 
 fileHandle = open(boText, "a")
-fileHandle.write(values + ", " + str(infer*(-1)) + "\n")  ###adversarialBOなので、マイナスをつけたものを最大化する。
+fileHandle.write(values + ", " + str(obj_function) + "\n")
 fileHandle.close()
