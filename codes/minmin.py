@@ -24,7 +24,7 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice
 
 '''
 Generating abnormal images
@@ -34,6 +34,7 @@ args = sys.argv
 version, boText, bufText, normalIdList, normalDir, abnormalDir, segMaskDir, saveParaPath, saveBboxPath = int(args[1]), args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]
 validPath, testPath, savePath, validBbox, testBbox, modelName, pretrained = args[10], args[11], args[12], args[13], args[14], args[15], args[16]
 num_epoch, batch_size, numSamples = int(args[17]), int(args[18]), int(args[19])
+modelPath, metric = args[20], args[21]
 
 trainDir = abnormalDir
 validDir = "/lustre/gk36/k77012/M2/data/{}/".format(validPath)
@@ -135,9 +136,11 @@ else:  #modelName=="fasterRCNN"
 # training
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
-best_miou, best_map = 0, 0
-best_miou_model = None
-test_miou = 0
+best_miou = 0
+best_epoch = None
+best_mdice = 0
+best_model = None
+test_performance = 0
 
 for epoch in range(num_epoch):
 
@@ -150,28 +153,41 @@ for epoch in range(num_epoch):
 
         #calculate performance of mean IoU
         miou = mIoU(validloader, model, numDisplay)
-        map = mAP(validloader, model, numDisplay)
+        mdice = mDice(validloader, model, numDisplay)
         testmiou = mIoU(testloader, model, numDisplay)
-        testmap = mAP(testloader, model, numDisplay)
+        testmdice= mDice(testloader, model, numDisplay)
 
-        #updathe the best performance
-        if miou > best_miou:
-            best_miou = miou
-            best_miou_model = copy.deepcopy(model.state_dict())
-            test_miou = testmiou #update the test performance
+        # updathe the best performance
+        if metric=="IoU":
+            #update IoU
+            if miou > best_miou:
+                best_miou = miou
+                best_model = copy.deepcopy(model.state_dict())
+                best_epoch = epoch
+                test_performance = testmiou #update the test performance
+            best_mdice = max(best_mdice, mdice)
+        else: #metric=="Dice"
+            #update dice
+            if mdice > best_mdice:
+                best_mdice = mdice
+                best_model = copy.deepcopy(model.state_dict())
+                best_epoch = epoch
+                test_performance = testmdice #update the test performance
+            best_miou = max(best_miou, miou)
 
-        best_map = max(best_map, map)
+    print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.3f}  valid_mDice:{:.3f}   test_loss:{:.4f}  test_mIoU:{:.3f}  test_mDice:{:.3f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, mdice, test_loss, testmiou, testmdice))
 
-    print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}   test_loss:{:.4f}  test_mIoU:{:.4f}  test_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map, test_loss, testmiou, testmap))
-    #print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.4f}  valid_mAP:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, map))
-
-print("best_mIoU:{:.4f},   best_mAP:{:.4f}".format(best_miou, best_map))
-print("test_mIoU:{:.4f}".format(test_miou))
-
+#printing the results
+if metric == "IoU":
+    print("best_mIoU:{:.3f}  (epoch:{}),  best_mDice:{:.3f}".format(best_miou, best_epoch + 1, best_mdice))
+    print("test_mIoU:{:.3f}".format(test_performance))
+else: # metric=="Dice"
+    print("best_mDice:{:.3f}  (epoch:{}),  best_mIoU:{:.3f}".format(best_mdice, best_epoch + 1, best_miou))
+    print("test_mDice:{:.3f}".format(test_performance))
 
 #save the model since we might use it later
-PATH = "/lustre/gk36/k77012/M2/model/minmin/model{}".format(version)
-torch.save(best_miou_model, PATH) #best_miou_model
+PATH = modelPath + "model" + str(version)
+torch.save(best_model, PATH)
 model.load_state_dict(torch.load(PATH)) #visualizationのときにもこのbest modelを用いることにする。
 
 #modify and redefine again to use in visualization
@@ -186,5 +202,9 @@ visualize(model, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
 
 # save the values and score for the next iteration
 fileHandle = open("/lustre/gk36/k77012/M2/bo_io/in/" + boText, "a")
-fileHandle.write("\n" + last_lines + ", " + str(best_miou))
+if metric == "IoU":
+    obj_function = best_miou
+else: # metric=="Dice"
+    obj_function = best_mdice
+fileHandle.write("\n" + last_lines + ", " + str(obj_function))
 fileHandle.close()
