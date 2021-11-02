@@ -37,12 +37,12 @@ num_epoch, batch_size, numSamples = int(args[17]), int(args[18]), int(args[19])
 modelPath, metric = args[20], args[21]
 
 trainDir = abnormalDir
-validDir = "/lustre/gk36/k77012/M2/data/{}/".format(validPath)
-testDir = "/lustre/gk36/k77012/M2/data/{}/".format(testPath)
-saveDir = "/lustre/gk36/k77012/M2/result/{}/".format(savePath)
+validDir = "/work/gk36/k77012/M2/data/{}/".format(validPath)
+testDir = "/work/gk36/k77012/M2/data/{}/".format(testPath)
+saveDir = "/work/gk36/k77012/M2/result/{}/".format(savePath)
 
 # read the recommended next values from Gaussian Process.
-fileHandle = open('/lustre/gk36/k77012/M2/' + bufText, "r")
+fileHandle = open('/work/gk36/k77012/M2/' + bufText, "r")
 lineList = fileHandle.readlines()
 fileHandle.close()
 last_lines = lineList[-1]
@@ -105,8 +105,8 @@ transform = transforms.Compose([
 ])
 
 df = pd.read_csv(saveBboxPath)
-df_valid = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(validBbox))
-df_test = pd.read_csv("/lustre/gk36/k77012/M2/{}".format(testBbox))
+df_valid = pd.read_csv("/work/gk36/k77012/M2/{}".format(validBbox))
+df_test = pd.read_csv("/work/gk36/k77012/M2/{}".format(testBbox))
 
 df = preprocess_df(df, originalSize, size, trainDir)
 df_valid = preprocess_df(df_valid, originalSize, size, validDir)
@@ -121,15 +121,16 @@ testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memor
 
 num_classes = 2 #(len(classes)) + 1
 if modelName=="SSD":
-    model = models.detection.ssd300_vgg16(pretrained=False, pretrained_backbone=False).to(device)
     if pretrained=="pretrained":
-        model.load_state_dict(torch.load("/lustre/gk36/k77012/M2/ssd300_vgg16_coco-b556d3b4.pth"))
-    model2 = models.detection.ssd300_vgg16(num_classes = num_classes, pretrained=False, pretrained_backbone=False)
+        model = models.detection.ssd300_vgg16(pretrained=True).to(device)
+    else:
+        model = models.detection.ssd300_vgg16(pretrained=False).to(device)
+    model2 = models.detection.ssd300_vgg16(num_classes = num_classes) #models.detection.ssd300_vgg16(num_classes = num_classes, pretrained=False, pretrained_backbone=False)
     model.head.classification_head = model2.head.classification_head.to(device)  #modify the head of the model
 else:  #modelName=="fasterRCNN"
     model = models.detection.fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone=False).to(device)
     if pretrained == "pretrained":
-        model.load_state_dict(torch.load("/lustre/gk36/k77012/M2/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth"))  # model.load_state_dict(torch.load("/lustre/gk36/k77012/faster_RCNN.pth"))
+        model.load_state_dict(torch.load("/work/gk36/k77012/M2/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth"))  # model.load_state_dict(torch.load("/work/gk36/k77012/faster_RCNN.pth"))
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes).to(device)
 
@@ -201,7 +202,7 @@ visualize(model, validloader, df_valid, numSamples, saveDir + "valid/", numDispl
 visualize(model, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
 
 # save the values and score for the next iteration
-fileHandle = open("/lustre/gk36/k77012/M2/bo_io/in/" + boText, "a")
+fileHandle = open("/work/gk36/k77012/M2/bo_io/in/" + boText, "a")
 if metric == "IoU":
     obj_function = best_miou
 else: # metric=="Dice"
