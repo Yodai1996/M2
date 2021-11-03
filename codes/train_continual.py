@@ -89,8 +89,8 @@ for i, v in enumerate(validBbox):
         barIndexForBbox = i
 
 for i in range(1,version):  #[1,version)
-    prevDir = validPath[:barIndexForDir-1] + str(i) + validPath[barIndexForDir:]
-    df_prev = pd.read_csv(validBbox[:barIndexForBbox-1] + str(i) + validBbox[barIndexForBbox:])
+    prevDir = validPath[:barIndexForDir-len(version)] + str(i) + validPath[barIndexForDir:]
+    df_prev = pd.read_csv(validBbox[:barIndexForBbox-len(version)] + str(i) + validBbox[barIndexForBbox:])
     df_prev = preprocess_df(df_prev, originalSize, size, prevDir)
     prevset = MyDataset(df_prev, transform=transform)
     prevloader = DataLoader(prevset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
