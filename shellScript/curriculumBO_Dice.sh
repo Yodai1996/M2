@@ -2,7 +2,7 @@
 
 #PBS -q l-regular
 #PBS -l select=1
-#PBS -W group_list=gk36
+#PBS -W group_list=gh68
 #PBS -l walltime=59:30:00
 #PBS -o curriculumBO_Dice.txt
 #PBS -j oe
@@ -34,8 +34,10 @@ numValid=200
 normalDir2="/lustre/gk36/k77012/M2/data/NormalDir${numValid}/"
 normalIdList2="/lustre/gk36/k77012/M2/normalIdList${numValid}.csv"
 
-testPath='AbnormalDir4880' #'AbnormalDir5012'
-testBbox='abnormal4880_bboxinfo.csv' #'abnormal5012_bboxinfo.csv'
+realValidPath='AbnormalDir10' #real valid data as a few shot setting.
+realValidBbox='abnormal10_bboxinfo.csv'
+testPath='AbnormalDir' #'AbnormalDir5012'
+testBbox='abnormal5870_bboxinfo.csv' #'abnormal5012_bboxinfo.csv'
 
 #for training
 epoch=40
@@ -52,7 +54,7 @@ mkdir -p "/lustre/gk36/k77012/M2/train_log/curriculumBO/start${curriStart}_decay
 #first, change directory
 cd ../bo_io
 
-for i in 1
+for i in 10 #7 8 9 #6 #4 5 #2 3 #1
 do
   normalDirForInfer="/lustre/gk36/k77012/M2/data/NormalDir${numInfer}/"
   normalIdListForInfer="/lustre/gk36/k77012/M2/normalIdList${numInfer}.csv"
@@ -126,10 +128,11 @@ do
   mkdir -p "/lustre/gk36/k77012/M2/result/${savePath}/" #for saving Dir
   mkdir -p "/lustre/gk36/k77012/M2/result/${savePath}/train"
   mkdir -p "/lustre/gk36/k77012/M2/result/${savePath}/valid"
+  mkdir -p "/lustre/gk36/k77012/M2/result/${savePath}/realValid"
   mkdir -p "/lustre/gk36/k77012/M2/result/${savePath}/test"
 
   #training the model
-  python ../codes/train_continual.py ${abnormalDir} ${abnormalDir2} ${testPath} ${bboxPath} ${bboxPath2} ${testBbox} ${modelPath} ${model} ${epoch} ${batch_size} ${numSamples} ${i} ${savePath} ${optimizer} ${metric} >> ../train_log/curriculumBO/start${curriStart}_decay${curriDecayRate}_${optimizer}_${metric}/model${i}_${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}.txt
+  python ../codes/train_continual.py ${abnormalDir} ${abnormalDir2} ${realValidPath} ${testPath} ${bboxPath} ${bboxPath2} ${realValidBbox} ${testBbox} ${modelPath} ${model} ${epoch} ${batch_size} ${numSamples} ${i} ${savePath} ${optimizer} ${metric} >> ../train_log/curriculumBO/start${curriStart}_decay${curriDecayRate}_${optimizer}_${metric}/model${i}_${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}.txt
   echo $i'_finished'
 
 done
