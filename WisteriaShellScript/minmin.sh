@@ -3,7 +3,7 @@
 #PJM -g jh170036a
 #PJM -L rscgrp=share
 #PJM -L gpu=1
-#PJM -L elapse=40:00:00
+#PJM -L elapse=47:59:00
 #PJM --fs /work,/data
 #PJM -N minmin-training
 #PJM -o minmin.txt
@@ -43,7 +43,7 @@ modelPath="/work/gk36/k77012/M2/model/minmin_${metric}/"
 mkdir -p ${modelPath}
 mkdir -p "/work/gk36/k77012/M2/train_log/minmin_${metric}/"
 
-for i in 6
+for i in 15 16 17 18 #11 12 13 14
 do
   cd ../bo_io
   ./build/suggest --hm --ha --hpopt -a ei --md 7 --mi ./in/${boText} >> ../${bufText}
