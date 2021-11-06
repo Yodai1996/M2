@@ -5,8 +5,8 @@
 #PJM -L gpu=1
 #PJM -L elapse=40:00:00
 #PJM --fs /work,/data
-#PJM -N minmin-training
-#PJM -o minmin.txt
+#PJM -N curriculumBO
+#PJM -o curriculumBO_Dice.txt
 #PJM -j
 #PJM --mail-list suzuki-takahiro596@g.ecc.u-tokyo.ac.jp
 #PJM -m b

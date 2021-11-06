@@ -20,7 +20,7 @@ optimizer='Adam' #default
 metric='Dice' #'IoU'
 
 #for curriculumBO
-curriStart='1.0' #'0.5'
+curriStart='0.5' #'1.0' #'0.5'
 curriDecayRate='0.9' #DecayRate for curriculum
 
 bufText="/lustre/gk36/k77012/M2/buf_curriculumBO${curriStart}_decay${curriDecayRate}_${optimizer}_${metric}.txt" #use the same text as it is just a buffer
