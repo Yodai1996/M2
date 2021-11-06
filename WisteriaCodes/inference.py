@@ -79,17 +79,19 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory
 
 num_classes = 2 #(len(classes)) + 1
 if modelName=="SSD":
-    model = models.detection.ssd300_vgg16(pretrained=False, pretrained_backbone=False).to(device)
     if pretrained=="pretrained":
-        model.load_state_dict(torch.load("/lustre/gk36/k77012/M2/ssd300_vgg16_coco-b556d3b4.pth"))
-    model2 = models.detection.ssd300_vgg16(num_classes = num_classes, pretrained=False, pretrained_backbone=False)
+        model = models.detection.ssd300_vgg16(pretrained=True).to(device)
+    else:
+        model = models.detection.ssd300_vgg16(pretrained=False).to(device)
+    model2 = models.detection.ssd300_vgg16(num_classes = num_classes) #models.detection.ssd300_vgg16(num_classes = num_classes, pretrained=False, pretrained_backbone=False)
     model.head.classification_head = model2.head.classification_head.to(device)  #modify the head of the model
 else:  #modelName=="fasterRCNN"
     model = models.detection.fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone=False).to(device)
     if pretrained == "pretrained":
-        model.load_state_dict(torch.load("/lustre/gk36/k77012/M2/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth"))  # model.load_state_dict(torch.load("/lustre/gk36/k77012/faster_RCNN.pth"))
+        model.load_state_dict(torch.load("/work/gk36/k77012/M2/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth"))  # model.load_state_dict(torch.load("/work/gk36/k77012/faster_RCNN.pth"))
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes).to(device)
+
 
 #load the previously trained model
 if version >= 2:
