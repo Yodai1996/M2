@@ -24,12 +24,23 @@ cd "${PJM_O_WORKDIR}" || exit
 #trainBbox='abnormal1000_bboxinfo.csv'
 #validBbox='abnormal4880_bboxinfo.csv'
 
-i=3 #1,2,3,4,5
-trainPath="sim${i}_1000"
-trainBbox="simDataInfo/bboxInfo/bboxInfo${i}_1000.csv"
-validPath='AbnormalDir10'
-validBbox='abnormal10_bboxinfo.csv'
+#i=3 #1,2,3,4,5
+#trainPath="sim${i}_1000"
+#trainBbox="simDataInfo/bboxInfo/bboxInfo${i}_1000.csv"
+#validPath='AbnormalDir10'
+#validBbox='abnormal10_bboxinfo.csv'
 
+#i=3
+#trainPath="ver${i}_1000"
+#trainBbox="simDataInfo/bboxInfo/curriculumBO/start0.5_decay0.9_VSGD_Dice_variability0.01_decay0.9/bboxInfo${i}_1000.csv"
+#validPath="ver${i}_200"
+#validBbox="simDataInfo/bboxInfo/curriculumBO/start0.5_decay0.9_VSGD_Dice_variability0.01_decay0.9/bboxInfo${i}_200.csv"
+
+i=7
+trainPath="ver${i}_1000"
+trainBbox="simDataInfo/bboxInfo/curriculumBO/start1.0_decay0.9_VSGD_Dice_variability0.01_decay1.0/bboxInfo${i}_1000.csv"
+validPath="ver${i}_200"
+validBbox="simDataInfo/bboxInfo/curriculumBO/start1.0_decay0.9_VSGD_Dice_variability0.01_decay1.0/bboxInfo${i}_200.csv"
 
 #trainPath='sim2_abnormal1000' #'train1/1_abnormal1000_1'
 #validPath='sim2_abnormal200' #'train1/1_abnormal200_1'
@@ -52,6 +63,7 @@ validBbox='abnormal10_bboxinfo.csv'
 #testPath='AbnormalDir5880'
 testPath='AbnormalDir' #大は小を兼ねるはず
 testBbox='abnormal5880_bboxinfo.csv'
+#testBbox='abnormal4880_bboxinfo.csv'
 
 modelPath="/work/gk36/k77012/M2/model/"
 

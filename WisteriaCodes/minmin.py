@@ -178,6 +178,15 @@ for epoch in range(num_epoch):
 
     print("epoch:{}/{}  train_loss:{:.4f}  valid_loss:{:.4f}  valid_mIoU:{:.3f}  valid_mDice:{:.3f}   test_loss:{:.4f}  test_mIoU:{:.3f}  test_mDice:{:.3f}".format(epoch + 1, num_epoch, train_loss, valid_loss, miou, mdice, test_loss, testmiou, testmdice))
 
+# save the values and score for the next iteration
+fileHandle = open("/work/gk36/k77012/M2/bo_io/in/" + boText, "a")
+if metric == "IoU":
+    obj_function = best_miou
+else: # metric=="Dice"
+    obj_function = best_mdice
+fileHandle.write("\n" + last_lines + ", " + str(obj_function))
+fileHandle.close()
+
 #printing the results
 if metric == "IoU":
     print("best_mIoU:{:.3f}  (epoch:{}),  best_mDice:{:.3f}".format(best_miou, best_epoch + 1, best_mdice))
@@ -200,12 +209,3 @@ testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memor
 visualize(model, trainloader, df, numSamples, saveDir + "train/", numDisplay)
 visualize(model, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
 visualize(model, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
-
-# save the values and score for the next iteration
-fileHandle = open("/work/gk36/k77012/M2/bo_io/in/" + boText, "a")
-if metric == "IoU":
-    obj_function = best_miou
-else: # metric=="Dice"
-    obj_function = best_mdice
-fileHandle.write("\n" + last_lines + ", " + str(obj_function))
-fileHandle.close()
