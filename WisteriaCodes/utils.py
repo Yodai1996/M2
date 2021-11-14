@@ -333,6 +333,42 @@ def returnFnIndices(dataloader, model, numDisplay, thres=0):
     return fn_indices
 
 
+def returnFnIndices_Dice(dataloader, model, numDisplay, thres=0, lower_thres=-1):
+
+    total = 0
+    fn_indices = []
+    model.eval()
+
+    for images, targets in dataloader:
+        images = list(image.to(device) for image in images)
+        batch = len(images)
+        outputs = model(images)
+
+        #calculate iou with targets and outputs
+        for i in range(batch):
+            trueBoxes = targets[i]
+            boxes = outputs[i]["boxes"].data.cpu()  #.numpy()
+            scores = outputs[i]["scores"].data.cpu()  #.numpy()
+
+            # filtering by the top numDisplay
+            boxes = boxes[:numDisplay]
+            scores = scores[:numDisplay]
+
+            #deal with when no bbox is predicted. When len(boxes)==0, it should be counted as FN
+            if len(boxes)==0:
+                if lower_thres < 0: #and 0 <=thres:
+                    fn_indices.append(total + i)
+            else: #if len(boxes)>0:
+                # calculate iou with targets and outputs
+                bboxDice = box_dice(boxes, trueBoxes)
+                maxDice = bboxDice.max(axis=0).values.numpy()  #calculate the maximum Dice for each trueBox
+                meanDice = maxDice.mean()
+                if lower_thres < meanDice and meanDice <= thres: #if meanIou <= thres:
+                    fn_indices.append(total + i)
+
+        total += batch
+
+    return fn_indices
 
 '''
 calculate dice, referring to the pytorch documentation:
