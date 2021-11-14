@@ -48,7 +48,7 @@ mkdir -p "/lustre/gk36/k77012/M2/train_log/adversarialBO/${optimizer}_${metric}"
 #first, change directory
 cd ../bo_io
 
-for i in 1 2
+for i in 5 6 #3 4 #1 2
 do
   normalDirForInfer="/lustre/gk36/k77012/M2/data/NormalDir${numInfer}/"
   normalIdListForInfer="/lustre/gk36/k77012/M2/normalIdList${numInfer}.csv"

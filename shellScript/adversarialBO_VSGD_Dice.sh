@@ -21,7 +21,7 @@ metric='Dice' #'IoU'
 
 #for otimizers' epsilon
 variability='0.01' #starting epsilon
-decayRate='1.0' #'0.9' #how much we decay the variability
+decayRate='0.9' #'1.0' #'0.9' #how much we decay the variability
 
 bufText="/lustre/gk36/k77012/M2/buf_adversarialBO_${optimizer}_${metric}_variability${variability}_decay${decayRate}.txt" #use the same text as it is just a buffer
 bestText="/lustre/gk36/k77012/M2/best_adversarialBO_${optimizer}_${metric}_variability${variability}_decay${decayRate}.txt"
@@ -51,7 +51,7 @@ mkdir -p "/lustre/gk36/k77012/M2/train_log/adversarialBO/${optimizer}_${metric}_
 #first, change directory
 cd ../bo_io
 
-for i in 3 4 #1 2
+for i in 7 8 #5 6 #3 4 #1 2
 do
   normalDirForInfer="/lustre/gk36/k77012/M2/data/NormalDir${numInfer}/"
   normalIdListForInfer="/lustre/gk36/k77012/M2/normalIdList${numInfer}.csv"

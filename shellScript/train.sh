@@ -13,9 +13,9 @@ cd "${PBS_O_WORKDIR}" || exit
 
 . /lustre/gk36/k77012/anaconda3/bin/activate pytorch2
 
-trainPath='AbnormalDir1000'
+trainPath='SmallBboxesAbnormalDir_SizeUnder130_except100' #'AbnormalDir1000'
 validPath='AbnormalDir4880'
-trainBbox='abnormal1000_bboxinfo.csv'
+trainBbox='abnormal_under130_smallbboxinfo_forHanaoka.csv' #'abnormal1000_bboxinfo.csv'
 validBbox='abnormal4880_bboxinfo.csv'
 
 #trainPath='sim1_abnormal1000' #'train1/1_abnormal1000_1'
@@ -45,9 +45,9 @@ testPath='AbnormalDir5880'
 testBbox='abnormal5880_bboxinfo.csv'
 
 
-epoch=40
+epoch=0 #40
 batch_size=64
-numSamples=50
+numSamples=100 #50
 
 model='SSD'
 #model='fasterRCNN'

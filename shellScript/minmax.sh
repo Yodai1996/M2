@@ -3,7 +3,7 @@
 #PBS -q l-regular
 #PBS -l select=1
 #PBS -W group_list=gk36
-#PBS -l walltime=59:00:00
+#PBS -l walltime=59:30:00
 #PBS -o minmax.txt
 #PBS -j oe
 #PBS -m abe
@@ -37,7 +37,7 @@ pretrained='pretrained'  #'unpretrained'
 testPath='AbnormalDir5012' #'AbnormalDir'でもよい
 testBbox='abnormal5012_bboxinfo.csv' #'abnormal_bboxinfo.csv'
 
-for i in 10 11 12
+for i in 27 28
 do
   cd ../bo_io
   ./build/suggest --hm --ha --hpopt -a ei --md 7 --mi ./in/${boText} >> ../${bufText}
