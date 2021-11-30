@@ -19,8 +19,9 @@ from matplotlib.patches import Rectangle
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class MyDataset(Dataset):
-    def __init__(self, df, transform=None):
+    def __init__(self, df, transform=None, inDim=3):
         paths, lefts1, tops1, rights1, bottoms1, lefts2, tops2, rights2, bottoms2 = df["path"], df["left1"], df["top1"], df["right1"], df["bottom1"], df["left2"], df["top2"], df["right2"], df["bottom2"]
+        lefts3, tops3, rights3, bottoms3, lefts4, tops4, rights4, bottoms4 = df["left3"], df["top3"], df["right3"], df["bottom3"], df["left4"], df["top4"], df["right4"], df["bottom4"]
         self.transform = transform
         self.paths = paths.values
         self.lefts1 = lefts1.values
@@ -31,6 +32,15 @@ class MyDataset(Dataset):
         self.tops2 = tops2.values
         self.rights2 = rights2.values
         self.bottoms2 = bottoms2.values
+        self.lefts3 = lefts3.values
+        self.tops3 = tops3.values
+        self.rights3 = rights3.values
+        self.bottoms3 = bottoms3.values
+        self.lefts4 = lefts4.values
+        self.tops4 = tops4.values
+        self.rights4 = rights4.values
+        self.bottoms4 = bottoms4.values
+        self.inDim = inDim
 
     def __len__(self):
         return len(self.paths)
@@ -40,16 +50,23 @@ class MyDataset(Dataset):
         x = Image.open(path)
         left1, top1, right1, bottom1 = self.lefts1[idx], self.tops1[idx], self.rights1[idx], self.bottoms1[idx]
         left2, top2, right2, bottom2 = self.lefts2[idx], self.tops2[idx], self.rights2[idx], self.bottoms2[idx]
+        left3, top3, right3, bottom3 = self.lefts3[idx], self.tops3[idx], self.rights3[idx], self.bottoms3[idx]
+        left4, top4, right4, bottom4 = self.lefts4[idx], self.tops4[idx], self.rights4[idx], self.bottoms4[idx]
 
         if self.transform:
             x = self.transform(x)  # xはtorch型
 
-        x = x.repeat(3, 1, 1)  # grayからRGBの形に変換。(3,300,300)
+        #x = x.repeat(3, 1, 1)  # grayからRGBの形に変換。(3,300,300)
+        x = x.repeat(self.inDim, 1, 1)  # grayからRGBの形に変換。(3,300,300)
 
         boxes = [[left1, top1, right1, bottom1]]
         if str(left2)!="nan":
             #2個目の病変があるケース
             boxes.append([left2, top2, right2, bottom2])
+            if str(left3) != "nan":
+                boxes.append([left3, top3, right3, bottom3])
+                if str(left4) != "nan":
+                    boxes.append([left4, top4, right4, bottom4])
 
         return x, torch.tensor(boxes, dtype=torch.float)
 
@@ -64,13 +81,21 @@ def preprocess_df(df, originalSize, size, Dir):
     df["top2"] = df["top2"] * size / originalSize
     df["right2"] = df["right2"] * size / originalSize
     df["bottom2"] = df["bottom2"] * size / originalSize
+    df["left3"] = df["left3"] * size / originalSize
+    df["top3"] = df["top3"] * size / originalSize
+    df["right3"] = df["right3"] * size / originalSize
+    df["bottom3"] = df["bottom3"] * size / originalSize
+    df["left4"] = df["left4"] * size / originalSize
+    df["top4"] = df["top4"] * size / originalSize
+    df["right4"] = df["right4"] * size / originalSize
+    df["bottom4"] = df["bottom4"] * size / originalSize
     return df
 
 def collate_fn(batch):
     return tuple(zip(*batch))
 
 #バグ修正版。
-def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=2):
+def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=2, show_gt=True, show_inf=True, maxsize=None):
 
     torch.cuda.empty_cache()
     model.eval()
@@ -98,23 +123,33 @@ def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=2):
             scores = scores[:numDisplay]
 
             #visualization
-            for i, box in enumerate(boxes):
-                draw = ImageDraw.Draw(image)
-                score = scores[i]
-                label = "score:{:.2f}".format(score)
-                draw.rectangle([(box[0], box[1]), (box[2], box[3])], outline="red", width=3)
+            if show_inf==True:
+                for i, box in enumerate(boxes):
+                    draw = ImageDraw.Draw(image)
+                    score = scores[i]
+                    label = "score:{:.2f}".format(score)
+                    draw.rectangle([(box[0], box[1]), (box[2], box[3])], outline="red", width=3)
 
-                #fnt = ImageFont.truetype('/content/mplus-1c-black.ttf', 20)
-                #fnt = ImageFont.truetype("arial.ttf", 10) #size
-                fnt = ImageFont.load_default()
-                text_w, text_h = fnt.getsize(label)
-                draw.rectangle([box[0], box[1], box[0]+text_w, box[1]+text_h], fill="red")
-                draw.text((box[0], box[1]), label, font=fnt, fill='white')
+                    #fnt = ImageFont.truetype('/content/mplus-1c-black.ttf', 20)
+                    #fnt = ImageFont.truetype("arial.ttf", 10) #size
+                    fnt = ImageFont.load_default()
+                    text_w, text_h = fnt.getsize(label)
+                    draw.rectangle([box[0], box[1], box[0]+text_w, box[1]+text_h], fill="red")
+                    draw.text((box[0], box[1]), label, font=fnt, fill='white')
 
             #visualization
-            for i, box in enumerate(trueBoxes):
-                draw = ImageDraw.Draw(image)
-                draw.rectangle([(box[0], box[1]), (box[2], box[3])], outline="blue", width=3)
+            if show_gt==True:
+                for i, box in enumerate(trueBoxes):
+                    draw = ImageDraw.Draw(image)
+                    if maxsize==None:
+                        draw.rectangle([(box[0], box[1]), (box[2], box[3])], outline="blue", width=3)
+                    else:
+                        #花岡先生に見せる用。bboxの大きさがmaxsize以下かそうでないかで色を使い分ける。
+                        if box[2] <= box[0] + maxsize and box[3] <= box[1] + maxsize:
+                            color = "blue"
+                        else:
+                            color = "green"
+                        draw.rectangle([(box[0], box[1]), (box[2], box[3])], outline=color, width=3)
 
             # set the savePath
             fileName = dataframe["file"][num+ind]  #fileName = dataframe["file"][ind]
