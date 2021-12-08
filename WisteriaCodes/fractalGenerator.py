@@ -62,7 +62,7 @@ def lungPosition(img, pneumonia, width, height, margin, too_white, iter_cnt, inc
 
     return centX, centY
 
-def make_abnormal(newImg, segMaskImg, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea, margin=240, too_white=90, iter_cnt=20, increment=1, canvasSize = 450):
+def make_abnormal(newImg, segMaskImg, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea, margin=240, too_white=90, iter_cnt=20, increment=1, canvasSize = 200):
 
     center = canvasSize // 2  # the center point is (canvasSize//2, canvasSize//2)
 
@@ -111,9 +111,8 @@ def make_abnormal(newImg, segMaskImg, index, lb, ub, res, octaves, persistence, 
     np.random.seed(index)
     noise = generate_fractal_noise_2d(shape=(shape, shape), res=(res, res), octaves=octaves, persistence=persistence, lacunarity=lacunarity)
 
-    #normalizing and scaling
+    #normalizing
     noise = (noise+1)/2  #0~1に正規化
-    noise *= scale
 
     #resize the image
     resized_noise = resize(noise, (height + 1, width + 1))
