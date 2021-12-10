@@ -95,7 +95,7 @@ def collate_fn(batch):
     return tuple(zip(*batch))
 
 #バグ修正版。
-def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=2, show_gt=True, show_inf=True, maxsize=None):
+def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=4, thres=0.1, show_gt=True, show_inf=True, maxsize=None):
 
     torch.cuda.empty_cache()
     model.eval()
@@ -118,9 +118,13 @@ def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=2, s
             scores = outputs[ind]["scores"].data.cpu().numpy()
             #labels = outputs[ind]["labels"].data.cpu().numpy()
 
-            # filtering by the top numDisplay
+            # firstly, filtering by the top numDisplay
             boxes = boxes[:numDisplay].astype(np.int32)
             scores = scores[:numDisplay]
+
+            # also, we display the bboxes whose score is over threshold
+            boxes = boxes[scores >= thres]
+            scores = scores[scores >= thres]
 
             #visualization
             if show_inf==True:
@@ -442,7 +446,7 @@ def box_dice(boxes1, boxes2):
     return dice
 
 
-def mDice(dataloader, model, numDisplay=2):
+def mDice(dataloader, model, numDisplay=4, thres=0.1):
 
     total = 0
     sum_dice = 0
@@ -459,9 +463,13 @@ def mDice(dataloader, model, numDisplay=2):
             boxes = outputs[i]["boxes"].data.cpu()  #.numpy()
             scores = outputs[i]["scores"].data.cpu()  #.numpy()
 
-            # filtering by the top numDisplay
+            # firstly, filtering by the top numDisplay
             boxes = boxes[:numDisplay]
             scores = scores[:numDisplay]
+
+            # also, we display the bboxes whose score is over threshold
+            boxes = boxes[scores >= thres]
+            scores = scores[scores >= thres]
 
             #deal with when no bbox is predicted. When len(boxes)==0, sum_dice += 0
             if len(boxes)>0:
