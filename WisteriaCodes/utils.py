@@ -15,6 +15,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from scipy import integrate
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -95,7 +96,7 @@ def collate_fn(batch):
     return tuple(zip(*batch))
 
 #バグ修正版。
-def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=4, thres=0.1, show_gt=True, show_inf=True, maxsize=None):
+def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=4, thres=0.2, show_gt=True, show_inf=True, maxsize=None):
 
     torch.cuda.empty_cache()
     model.eval()
@@ -482,3 +483,269 @@ def mDice(dataloader, model, numDisplay=4, thres=0.1):
         total += batch
 
     return sum_dice / total
+
+'''
+以下、FROC用
+'''
+
+def isSmall(box, size_thres):
+    #if the size of the box is <= size_thres, then return True
+    return box[2] <= box[0] + size_thres and box[3] <= box[1] + size_thres
+
+def evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP_duplicate):
+    # default: hit_thres=0.2, ignore_big_bbox=False, accept_TP_duplicate=True
+    # 場合分けを各々やればよい
+
+    bboxDice = box_dice(boxes, trueBoxes)
+    TP, FP = 0, 0
+    gt_used = [0] * len(trueBoxes)  # non-used yet.
+
+    if ignore_big_bbox==False and accept_TP_duplicate==True: #一番ナイーブ
+        maxDice = bboxDice.max(axis=1).values.numpy() #calculate the maximum Dice for each bbox, not trueBox
+        gt_indices = bboxDice.argmax(axis=1)
+        for i,dice in enumerate(maxDice):
+            if dice >= hit_thres:
+                index = gt_indices[i]
+                gt_used[index] = 1 #assigned
+        TP = sum(gt_used)
+        FP = sum(maxDice < hit_thres)
+
+
+    elif ignore_big_bbox == False and accept_TP_duplicate == False:
+        # 重複を許さないので、こっちの方が厳しめの判定にはなる。
+        # scoreの大きい予測bboxから順に、まだ未割当の正解bboxとのマッチングを、greedyに行っていけばよい。
+
+        sortedDice = bboxDice.sort(axis=1, descending=True)
+        sortedValues = sortedDice.values
+        sortedIndices = sortedDice.indices
+
+        # scoreが高い順のgreedyなので、上から順にサーベイしていけばよい
+        for i in range(len(boxes)):  # len(boxes) should be equal to len(sortedValues)
+
+            # 今、着目しているggt_bboxのindexはsortedIndices[i][j]であることに留意。
+            j = 0
+            while sortedValues[i][j] >= hit_thres and gt_used[sortedIndices[i][j]] == 1:
+                j += 1
+                if j == len(trueBoxes):  # len(trueBoxes) should be equal to len(sortedValues[0])
+                    break
+
+            if j == len(trueBoxes):
+                # 常にhitしていたのだが、マッチするgt_bboxはむなしく結局なかった。
+                FP += 1
+            elif sortedValues[i][j] < hit_thres:
+                FP += 1
+            else:  # the gt_bbox is not assigned yet  #sortedValues[i][j] >= hit_thres holds.
+                TP += 1
+                gt_used[sortedIndices[i][j]] = 1  # assign
+
+
+    elif ignore_big_bbox == True and accept_TP_duplicate == True:
+        # 大bboxは無視しして扱う＆TPの重複を許すversion
+
+        sortedDice = bboxDice.sort(axis=1, descending=True)
+        sortedValues = sortedDice.values
+        sortedIndices = sortedDice.indices
+
+        # scoreが高い順のgreedyなので、上から順にサーベイしていけばよい
+        for i in range(len(boxes)):  # len(boxes) should be equal to len(sortedValues)
+
+            # 今、着目しているggt_bboxのindexはsortedIndices[j]であることに留意。
+            j = 0
+            index = sortedIndices[i][j]
+            while sortedValues[i][j] >= hit_thres and isSmall(trueBoxes[index],
+                                                              size_thres) == False:  # gt_bbox = trueBoxes[index]
+                j += 1
+                index = sortedIndices[i][j]
+
+            if sortedValues[i][j] < hit_thres:
+                if j == 0:  # j>=1に関しては、大きなbboxと１回以上マッチしているので、IPとして扱う。
+                    FP += 1
+            else:  # sortedValues[i][j] >= hit_thres and isSmall(trueBoxes[index], size_thres)==True
+                TP += 1
+
+
+    else:  # ignore_big_bbox==True and accept_TP_duplicate==False:
+        # 大bboxは無視しして扱う＆TPの重複を許さないversion
+
+        sortedDice = bboxDice.sort(axis=1, descending=True)
+        sortedValues = sortedDice.values
+        sortedIndices = sortedDice.indices
+
+        # scoreが高い順のgreedyなので、上から順にサーベイしていけばよい
+        for i in range(len(boxes)):  # len(boxes) should be equal to len(sortedValues)
+
+            # 今、着目しているggt_bboxのindexはsortedIndices[j]であることに留意。
+            j = 0
+            index = sortedIndices[i][j]
+
+            # 大きなbboxと１回以上マッチしたかどうかを管理する変数
+            foundBig = False
+
+            while sortedValues[i][j] >= hit_thres and (
+                    isSmall(trueBoxes[index], size_thres) == False or gt_used[index] == 1) and j < len(trueBoxes):
+                if isSmall(trueBoxes[index], size_thres) == False:
+                    foundBig = True
+                j += 1
+                index = sortedIndices[i][j]
+
+            if j == len(trueBoxes):  # 常にhitしていたのだが、マッチするgt_bboxはむなしく結局なかった。
+                if foundBig == False:
+                    FP += 1
+
+            elif sortedValues[i][j] < hit_thres:
+                if foundBig == False:
+                    FP += 1
+
+            else:  # sortedValues[i][j] >= hit_thres AND isSmall(trueBoxes[index], size_thres)==True AND gt_used[index]==0
+                TP += 1
+                gt_used[index] = 1  # assign
+
+    return TP, FP
+
+
+def FROC(dataloader, model, hit_thres=0.2, size_thres=150 * 300 / 1024, ignore_big_bbox=False, accept_TP_duplicate=True):
+
+    thresholds = [0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.9, 1]  # 仮に。もっと細かくしてもよい。
+    numThres = len(thresholds)
+
+    numTP = np.zeros(numThres)  # [0] * numThres
+    numFP = np.zeros(numThres)  # [0] * numThres
+
+    numGT = 0  # gt_bboxの数. 各thresに対して同一になるはずなので、一回計算すればよい。
+    total = 0
+
+    model.eval()
+    for images, targets in dataloader:
+        images = list(image.to(device) for image in images)
+        batch = len(images)
+        outputs = model(images)
+
+        for ind in range(batch):
+            trueBoxes = targets[ind]
+            boxes = outputs[ind]["boxes"].data.cpu()  # .numpy()
+            scores = outputs[ind]["scores"].data.cpu()  # .numpy()
+
+            if ignore_big_bbox == True:
+                for box in trueBoxes:
+                    if isSmall(box, size_thres):  # bboxが小さいならGTの中に加えよ
+                        numGT += 1
+            else:
+                numGT += len(trueBoxes)
+
+            #             #initial screening
+            #             boxes = boxes[scores >= thresholds[0]]
+            #             scores = scores[scores >= thresholds[0]]
+
+            for i in range(numThres):
+                ###naive implementation is the first step
+                boxes = boxes[scores >= thresholds[i]]
+                scores = scores[scores >= thresholds[i]]
+
+                # 以下、関数化する。boxesとtrueBoxesをもとに、TPとFPをcalculateするモジュール。
+                TP, FP = evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP_duplicate)
+
+                numTP[i] += TP
+                numFP[i] += FP
+
+        total += batch
+
+    TPRs = numTP / numGT
+    FPIs = numFP / total
+
+    return TPRs, FPIs, thresholds  # numTP, numFP, numGT, total, thresholds
+
+
+def interpolate(TPRs, FPIs, x):
+    # based on the input, return the value at the point x, i.e., FPIs(x)
+    # ついでにそのindex iも返そう（その方が便利）
+    # Both is fine, reversed or not
+
+    # Preprocessing: the input should be an ascending order
+    if TPRs[0] > TPRs[-1]:
+        TPRs = list(reversed(TPRs))
+        FPIs = list(reversed(FPIs))
+
+    # find the index
+    # ここでエラー発生したら、それはextrapolationになってしまうので、エラーたるべき。
+    i = 0
+    while not (FPIs[i] <= x and x <= FPIs[i + 1]):
+        i += 1
+
+    # interpolated value at FPIs(x)
+    x1, x2 = FPIs[i], FPIs[i + 1]
+    y1, y2 = TPRs[i], TPRs[i + 1]
+    y = ((x2 - x) * y1 + (x - x1) * y2) / (x2 - x1)
+    return y, i
+
+
+def FAUC(TPRs, FPIs):
+    # calculate FAUC i.e., the area of FROC from 0 to 1
+    # Notice: the input array are reversed. so we have to reverse, or return its abs()
+
+    # Preprocessing: make the input an ascending order
+    if TPRs[0] > TPRs[-1]:
+        TPRs = list(reversed(TPRs))
+        FPIs = list(reversed(FPIs))
+
+    # interpolate
+    y, index = interpolate(TPRs, FPIs, 1)
+
+    # add the element at the point 1 to the appropriate index
+    FPIs[index + 1] = 1
+    TPRs[index + 1] = y
+
+    # delete the area outside of 1, i.e., 1 < x
+    FPIs = FPIs[:index + 2]
+    TPRs = TPRs[:index + 2]
+
+    return integrate.trapz(TPRs, FPIs)  # (y, x)
+
+
+def CPM(TPRs, FPIs):
+    # calculate an average sensitivity at the following 7 points
+    # Notice: the input array are reversed. so we have to reverse, or return its abs()
+
+    xs = [1/8, 1/4, 1/2, 1, 2, 4, 8]
+    sums = 0
+
+    # Preprocessing: make the input an ascending order
+    if TPRs[0] > TPRs[-1]:
+        TPRs = list(reversed(TPRs))
+        FPIs = list(reversed(FPIs))
+
+    for x in xs:
+        # interpolate
+        y, _ = interpolate(TPRs, FPIs, x)
+        sums += y
+
+    return sums/len(xs)
+
+
+def RCPM(TPRs, FPIs):
+    # calculate an average sensitivity at the following 7 points
+    # Notice: the input array are reversed. so we have to reverse, or return its abs()
+
+    xs = [1/8, 1/4, 1/2, 1]
+    sums = 0
+
+    # Preprocessing: make the input an ascending order
+    if TPRs[0] > TPRs[-1]:
+        TPRs = list(reversed(TPRs))
+        FPIs = list(reversed(FPIs))
+
+    for x in xs:
+        # interpolate
+        y, _ = interpolate(TPRs, FPIs, x)
+        sums += y
+
+    return sums/len(xs)
+
+
+def plotFROC(TPRs, FPIs, savePath):
+    plt.figure()
+    plt.plot(FPIs, TPRs, 'o-')  #点を表示させないなら、plt.plot(FPIs, TPRs)でよい。
+    plt.xlabel('FPavg')
+    plt.ylabel('Sensitivity')
+
+    plt.savefig(savePath)
+
