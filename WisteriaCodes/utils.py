@@ -60,14 +60,18 @@ class MyDataset(Dataset):
         #x = x.repeat(3, 1, 1)  # grayからRGBの形に変換。(3,300,300)
         x = x.repeat(self.inDim, 1, 1)  # grayからRGBの形に変換。(3,300,300)
 
-        boxes = [[left1, top1, right1, bottom1]]
-        if str(left2)!="nan":
-            #2個目の病変があるケース
-            boxes.append([left2, top2, right2, bottom2])
-            if str(left3) != "nan":
-                boxes.append([left3, top3, right3, bottom3])
-                if str(left4) != "nan":
-                    boxes.append([left4, top4, right4, bottom4])
+        #正常画像が現れる可能性があるので、修正した。
+        boxes = []
+        if str(left1)!="nan":
+            #異常画像
+            boxes.append([left1, top1, right1, bottom1])
+            if str(left2)!="nan":
+                #2個目の病変があるケース
+                boxes.append([left2, top2, right2, bottom2])
+                if str(left3) != "nan":
+                    boxes.append([left3, top3, right3, bottom3])
+                    if str(left4) != "nan":
+                        boxes.append([left4, top4, right4, bottom4])
 
         return x, torch.tensor(boxes, dtype=torch.float)
 
@@ -96,7 +100,7 @@ def collate_fn(batch):
     return tuple(zip(*batch))
 
 #バグ修正版。
-def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=4, thres=0.2, show_gt=True, show_inf=True, maxsize=None):
+def visualize(model, dataloader, dataframe, numSamples, saveDir, numDisplay=4, thres=0.4, show_gt=True, show_inf=True, maxsize=None):
 
     torch.cuda.empty_cache()
     model.eval()
@@ -447,7 +451,7 @@ def box_dice(boxes1, boxes2):
     return dice
 
 
-def mDice(dataloader, model, numDisplay=4, thres=0.1):
+def mDice(dataloader, model, numDisplay=4, thres=0.4):
 
     total = 0
     sum_dice = 0
@@ -541,6 +545,7 @@ def evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP
 
     elif ignore_big_bbox == True and accept_TP_duplicate == True:
         # 大bboxは無視しして扱う＆TPの重複を許すversion
+        # 結局、argmaxだけ考えることにした。２番手以降だとdice>=0.2が発生することはほとんどないだろうから。
 
         sortedDice = bboxDice.sort(axis=1, descending=True)
         sortedValues = sortedDice.values
@@ -549,11 +554,10 @@ def evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP
         # scoreが高い順のgreedyなので、上から順にサーベイしていけばよい
         for i in range(len(boxes)):  # len(boxes) should be equal to len(sortedValues)
 
-            # 今、着目しているggt_bboxのindexはsortedIndices[j]であることに留意。
+            # 今、着目しているggt_bboxのindexはsortedIndices[i][j]であることに留意。
             j = 0
             index = sortedIndices[i][j]
-            while sortedValues[i][j] >= hit_thres and isSmall(trueBoxes[index],
-                                                              size_thres) == False:  # gt_bbox = trueBoxes[index]
+            while sortedValues[i][j] >= hit_thres and isSmall(trueBoxes[index], size_thres) == False:  # gt_bbox = trueBoxes[index]
                 j += 1
                 index = sortedIndices[i][j]
 
@@ -562,6 +566,19 @@ def evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP
                     FP += 1
             else:  # sortedValues[i][j] >= hit_thres and isSmall(trueBoxes[index], size_thres)==True
                 TP += 1
+
+    # elif ignore_big_bbox == True and accept_TP_duplicate == True:
+    #     # 大bboxは無視しして扱う＆TPの重複を許すversion
+    #     # 結局、argmaxだけ考えることにした。２番手以降だとdice>=0.2が発生することはほとんどないだろうから。
+    #
+    #     maxDice = bboxDice.max(axis=1).values.numpy() #calculate the maximum Dice for each bbox, not trueBox
+    #     gt_indices = bboxDice.argmax(axis=1)
+    #     for i,dice in enumerate(maxDice):
+    #         if dice >= hit_thres:
+    #             index = gt_indices[i]
+    #             gt_used[index] = 1 #assigned
+    #     TP = sum(gt_used)
+    #     FP = sum(maxDice < hit_thres)
 
 
     else:  # ignore_big_bbox==True and accept_TP_duplicate==False:
@@ -605,7 +622,7 @@ def evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP
 
 def FROC(dataloader, model, hit_thres=0.2, size_thres=150 * 300 / 1024, ignore_big_bbox=False, accept_TP_duplicate=True):
 
-    thresholds = [0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.9, 1]  # 仮に。もっと細かくしてもよい。
+    thresholds = [0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]  # 仮に。もっと細かくしてもよい。
     numThres = len(thresholds)
 
     numTP = np.zeros(numThres)  # [0] * numThres
@@ -625,6 +642,7 @@ def FROC(dataloader, model, hit_thres=0.2, size_thres=150 * 300 / 1024, ignore_b
             boxes = outputs[ind]["boxes"].data.cpu()  # .numpy()
             scores = outputs[ind]["scores"].data.cpu()  # .numpy()
 
+            #count the number of ground truth
             if ignore_big_bbox == True:
                 for box in trueBoxes:
                     if isSmall(box, size_thres):  # bboxが小さいならGTの中に加えよ
@@ -632,17 +650,20 @@ def FROC(dataloader, model, hit_thres=0.2, size_thres=150 * 300 / 1024, ignore_b
             else:
                 numGT += len(trueBoxes)
 
-            #             #initial screening
-            #             boxes = boxes[scores >= thresholds[0]]
-            #             scores = scores[scores >= thresholds[0]]
-
+                
+            #count the number of TP and FP in this image for each numThres
             for i in range(numThres):
                 ###naive implementation is the first step
                 boxes = boxes[scores >= thresholds[i]]
                 scores = scores[scores >= thresholds[i]]
 
-                # 以下、関数化する。boxesとtrueBoxesをもとに、TPとFPをcalculateするモジュール。
-                TP, FP = evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP_duplicate)
+                # case distinction
+                if len(trueBoxes)==0: #normal image
+                    TP = 0
+                    FP = len(boxes)
+                else:
+                    #以下、関数化する。boxesとtrueBoxesをもとに、TPとFPをcalculateするモジュール。
+                    TP, FP = evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP_duplicate)
 
                 numTP[i] += TP
                 numFP[i] += FP

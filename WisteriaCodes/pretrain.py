@@ -20,9 +20,11 @@ from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset,
 
 args = sys.argv
 
-trainPath, validPath, trainBbox, validBbox, modelPath, modelName = args[1], args[2], args[3], args[4], args[5], args[6]
+trainPath, validPath, trainBboxName, validBboxName, modelPath, modelName = args[1], args[2], args[3], args[4], args[5], args[6]
 num_epoch, batch_size, numSamples = int(args[7]), int(args[8]), int(args[9])
 pretrained, saveDir, saveFROCPath, optimizerName, variability = args[10], args[11], args[12], args[13], float(args[14])
+
+trainBbox, validBbox = trainBboxName + ".csv", validBboxName + ".csv"
 trainDir = "/work/gk36/k77012/M2/data/{}/".format(trainPath)
 validDir = "/work/gk36/k77012/M2/data/{}/".format(validPath)
 df = pd.read_csv("/work/gk36/k77012/M2/{}".format(trainBbox))
@@ -81,10 +83,10 @@ for epoch in range(num_epoch):
 
     # validation
     with torch.no_grad():
-        valid_loss = valid(validloader, model)
+        #valid_loss = valid(validloader, model)
 
         #calculate performance of mean IoU
-        mdice = mDice(validloader, model)
+        #dice = mDice(validloader, model)
         TPRs, FPIs, thresholds = FROC(validloader, model)
         # print(TPRs)
         # print(FPIs)
@@ -108,20 +110,21 @@ for epoch in range(num_epoch):
             best_model = copy.deepcopy(model.state_dict())
             best_epoch = epoch
 
-    print("epoch:{}/{}  train_loss:{:.4f}  val_loss:{:.4f}  val_mDice:{:.4f}  val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}  val_faucStrict:{:.4f}  val_cpmStrict:{:.4f}  val_rcpmStrict:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, mdice, fauc, cpm, rcpm, fauc_strict, cpm_strict, rcpm_strict))
+    #print("epoch:{}/{}  train_loss:{:.4f}  val_loss:{:.4f}  val_mDice:{:.4f}  val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}  val_faucStrict:{:.4f}  val_cpmStrict:{:.4f}  val_rcpmStrict:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, mdice, fauc, cpm, rcpm, fauc_strict, cpm_strict, rcpm_strict))
+    print("epoch:{}/{}  train_loss:{:.4f}   val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}  val_faucStrict:{:.4f}  val_cpmStrict:{:.4f}  val_rcpmStrict:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc, cpm, rcpm, fauc_strict, cpm_strict, rcpm_strict))
 
 print("best_faucStrict:{:.4f}   (epoch:{})".format(best_value, best_epoch + 1))
 
 #save the model since we might use it later
-PATH = modelPath + f"model_{optimizerName}_{variability}_${num_epoch}"
+PATH = modelPath + f"model_{trainBboxName}_{validBboxName}_{optimizerName}_{variability}_{num_epoch}"
 torch.save(best_model, PATH) #best_model
 model.load_state_dict(torch.load(PATH)) #visualizationのときにもこのbest modelを用いることにする。
 
 #visualize the fROC
 TPRs, FPIs, thresholds = FROC(validloader, model)
-plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_{optimizerName}_{variability}_{num_epoch}.png")
+plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_{trainBboxName}_{validBboxName}_{optimizerName}_{variability}_{num_epoch}.png")
 TPRs, FPIs, thresholds = FROC(validloader, model, accept_TP_duplicate=False)
-plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_strict_{optimizerName}_{variability}_{num_epoch}.png")
+plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_strict_{trainBboxName}_{validBboxName}_{optimizerName}_{variability}_{num_epoch}.png")
 
 #modify and redefine again to use in visualization
 trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)

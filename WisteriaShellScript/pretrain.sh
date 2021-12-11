@@ -19,13 +19,13 @@ cd "${PJM_O_WORKDIR}" || exit
 
 #pipenv shell #activate the virtual environment
 
-trainPath='AbnormalDir'
-validPath='AbnormalDir'
-trainBboxName='nonSmall_bboxInfo_655'
-validBboxName='nonSmall_bboxInfo_164'
+trainPath='AllDataDir' #'AbnormalDir'
+validPath='AllDataDir' #'AbnormalDir'
+trainBboxName='nonSmall_bboxInfo_655' #'nonSmall_bboxInfo_655_withNormal'
+validBboxName='nonSmall_bboxInfo_164_withNormal'
 
-trainBbox="${trainBboxName}.csv"
-validBbox="${validBboxName}.csv"
+#trainBbox="${trainBboxName}.csv"
+#validBbox="${validBboxName}.csv"
 
 modelPath="/work/gk36/k77012/M2/model/"
 saveFROCPath="/work/gk36/k77012/M2/FROC/"
@@ -33,16 +33,16 @@ saveFROCPath="/work/gk36/k77012/M2/FROC/"
 optimizer='VSGD'
 variability='0.005' #starting epsilon
 
-epoch=100 #40
+epoch=120 #40
 batch_size=64
 numSamples=50
 
 model='SSD'
 pretrained='pretrained'  #'unpretrained'
-saveDir="/work/gk36/k77012/M2/result/${trainBboxName}_${validBboxName}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}_${optimizer}/"
+saveDir="/work/gk36/k77012/M2/result/${trainBboxName}_${validBboxName}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}_${optimizer}_${variability}/"
 mkdir -p ${saveDir} #for saving Dir
 mkdir -p "${saveDir}/train"
 mkdir -p "${saveDir}/valid"
 
-pipenv run python ../WisteriaCodes/pretrain.py ${trainPath} ${validPath} ${trainBbox} ${validBbox} ${modelPath} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained} ${saveDir} ${saveFROCPath} ${optimizer} ${variability} >> ../train_log/${trainBboxName}_${validBboxName}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}_${optimizer}_${variability}.txt
+pipenv run python ../WisteriaCodes/pretrain.py ${trainPath} ${validPath} ${trainBboxName} ${validBboxName} ${modelPath} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained} ${saveDir} ${saveFROCPath} ${optimizer} ${variability} >> ../train_log/${trainBboxName}_${validBboxName}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}_${optimizer}_${variability}.txt
 echo 'training_finished'
