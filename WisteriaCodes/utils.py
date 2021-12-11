@@ -542,80 +542,31 @@ def evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP
                 TP += 1
                 gt_used[sortedIndices[i][j]] = 1  # assign
 
-
-    elif ignore_big_bbox == True and accept_TP_duplicate == True:
+    else:
+        #elif ignore_big_bbox == True and accept_TP_duplicate == True:
+        #Or, ignore_big_bbox == True and accept_TP_duplicate == False
         # 大bboxは無視しして扱う＆TPの重複を許すversion
         # 結局、argmaxだけ考えることにした。２番手以降だとdice>=0.2が発生することはほとんどないだろうから。
 
-        sortedDice = bboxDice.sort(axis=1, descending=True)
-        sortedValues = sortedDice.values
-        sortedIndices = sortedDice.indices
-
-        # scoreが高い順のgreedyなので、上から順にサーベイしていけばよい
-        for i in range(len(boxes)):  # len(boxes) should be equal to len(sortedValues)
-
-            # 今、着目しているggt_bboxのindexはsortedIndices[i][j]であることに留意。
-            j = 0
-            index = sortedIndices[i][j]
-            while sortedValues[i][j] >= hit_thres and isSmall(trueBoxes[index], size_thres) == False:  # gt_bbox = trueBoxes[index]
-                j += 1
-                index = sortedIndices[i][j]
-
-            if sortedValues[i][j] < hit_thres:
-                if j == 0:  # j>=1に関しては、大きなbboxと１回以上マッチしているので、IPとして扱う。
-                    FP += 1
-            else:  # sortedValues[i][j] >= hit_thres and isSmall(trueBoxes[index], size_thres)==True
-                TP += 1
-
-    # elif ignore_big_bbox == True and accept_TP_duplicate == True:
-    #     # 大bboxは無視しして扱う＆TPの重複を許すversion
-    #     # 結局、argmaxだけ考えることにした。２番手以降だとdice>=0.2が発生することはほとんどないだろうから。
-    #
-    #     maxDice = bboxDice.max(axis=1).values.numpy() #calculate the maximum Dice for each bbox, not trueBox
-    #     gt_indices = bboxDice.argmax(axis=1)
-    #     for i,dice in enumerate(maxDice):
-    #         if dice >= hit_thres:
-    #             index = gt_indices[i]
-    #             gt_used[index] = 1 #assigned
-    #     TP = sum(gt_used)
-    #     FP = sum(maxDice < hit_thres)
-
-
-    else:  # ignore_big_bbox==True and accept_TP_duplicate==False:
-        # 大bboxは無視しして扱う＆TPの重複を許さないversion
-
-        sortedDice = bboxDice.sort(axis=1, descending=True)
-        sortedValues = sortedDice.values
-        sortedIndices = sortedDice.indices
-
-        # scoreが高い順のgreedyなので、上から順にサーベイしていけばよい
-        for i in range(len(boxes)):  # len(boxes) should be equal to len(sortedValues)
-
-            # 今、着目しているggt_bboxのindexはsortedIndices[j]であることに留意。
-            j = 0
-            index = sortedIndices[i][j]
-
-            # 大きなbboxと１回以上マッチしたかどうかを管理する変数
-            foundBig = False
-
-            while sortedValues[i][j] >= hit_thres and (
-                    isSmall(trueBoxes[index], size_thres) == False or gt_used[index] == 1) and j < len(trueBoxes):
-                if isSmall(trueBoxes[index], size_thres) == False:
-                    foundBig = True
-                j += 1
-                index = sortedIndices[i][j]
-
-            if j == len(trueBoxes):  # 常にhitしていたのだが、マッチするgt_bboxはむなしく結局なかった。
-                if foundBig == False:
-                    FP += 1
-
-            elif sortedValues[i][j] < hit_thres:
-                if foundBig == False:
-                    FP += 1
-
-            else:  # sortedValues[i][j] >= hit_thres AND isSmall(trueBoxes[index], size_thres)==True AND gt_used[index]==0
-                TP += 1
-                gt_used[index] = 1  # assign
+        maxDice = bboxDice.max(axis=1).values.numpy() #calculate the maximum Dice for each bbox, not trueBox
+        gt_indices = bboxDice.argmax(axis=1)
+        for i, dice in enumerate(maxDice):
+            if dice >= hit_thres:
+                index = gt_indices[i]
+                if isSmall(trueBoxes[index], size_thres): #small bbox
+                    if gt_used[index] == 0: #not assigned yet
+                        TP += 1
+                        gt_used[index] = 1
+                    else:
+                        #already assigned
+                        #when accept_TP_duplicate, just ignore
+                        if not accept_TP_duplicate:
+                            FP += 1
+                # else:
+                    #big bbox
+                    #大きなbboxとマッチした予測bboxはIPとして扱え。すなわちIgnore。
+            else:
+                FP += 1
 
     return TP, FP
 
