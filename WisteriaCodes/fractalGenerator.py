@@ -138,15 +138,18 @@ def make_abnormal(newImg, segMaskImg, index, lb, ub, res, octaves, persistence, 
 
 
 def make_abnormals(ll, normal_dir, abnormal_dir, segMask_dir, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea):
-    #最大腫瘍を２つつけるようにする。とりあえず確率0.5で１個か２個にすればいいか。
-    prob = 0.5
+
+    #病変を何個作成するか。
+    prob1 = 0.93
+    prob2 = 0.04
+    prob3 = 0.03
 
     # こっちは縦につなげるか。見やすいので。
     parameterInfo = []
     parameterInfo.append(["file", "index", "lb", "ub", "res", "octaves", "persistence", "lacunarity", "scale", "smoothArea", "cent_x", "cent_y", "r"])
 
     bboxInfo = []
-    bboxInfo.append(["file", "left1", "top1", "right1", "bottom1", "left2", "top2", "right2", "bottom2"]) #x,y,xmax,ymax #こっちは横につなげよう。無ければNoneでよい.
+    bboxInfo.append(["file", "left1", "top1", "right1", "bottom1", "left2", "top2", "right2", "bottom2", "left3", "top3", "right3", "bottom3", "left4", "top4", "right4", "bottom4"]) #x,y,xmax,ymax #こっちは横につなげよう。無ければNoneでよい.
 
     index = 0
 
@@ -161,24 +164,38 @@ def make_abnormals(ll, normal_dir, abnormal_dir, segMask_dir, lb, ub, res, octav
 
     for i, file in enumerate(ll):
         newImg, segMaskImg = newImages[i], maskImages[i]
-        #img, newImg, segMaskImg = images[i], newImages[i], maskImages[i]
-        # assert(img.size[0]==img.size[1])
-        # size = img.size[0]
+
+        prob = random.random()
+
+        left2, top2, right2, bottom2 = None, None, None, None
+        left3, top3, right3, bottom3 = None, None, None, None
+        left4, top4, right4, bottom4 = None, None, None, None
 
         #make abnormals
+        #１個目作成
         newImg, segMaskImg, left1, top1, right1, bottom1, centX, centY, r = make_abnormal(newImg, segMaskImg, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea)
         parameterInfo.append([file, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea, centX, centY, r])  # ほかのパラメタも一応入れとく。
         index += 1
-        if random.random() < prob:
-            #1個だけ
-            bboxInfo.append([file, left1, top1, right1, bottom1, None, None, None, None])
-        else:
-            #２個目もつける
-            newImg, segMaskImg, left2, top2, right2, bottom2, centX, centY, r= make_abnormal(newImg, segMaskImg, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea)
+        if prob1 < prob:
+            #2個目も作成
+            newImg, segMaskImg, left2, top2, right2, bottom2, centX, centY, r = make_abnormal(newImg, segMaskImg, index,
+                                                                                              lb, ub, res, octaves,
+                                                                                              persistence, lacunarity,
+                                                                                              scale, smoothArea)
             parameterInfo.append([file, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea, centX, centY, r])  # ほかのパラメタも一応入れとく。
             index += 1
-            bboxInfo.append([file, left1, top1, right1, bottom1, left2, top2, right2, bottom2])
+            if prob1+prob2 < prob:
+                # 3個目も作成
+                newImg, segMaskImg, left3, top3, right3, bottom3, centX, centY, r = make_abnormal(newImg, segMaskImg,
+                                                                                                  index,
+                                                                                                  lb, ub, res, octaves,
+                                                                                                  persistence,
+                                                                                                  lacunarity,
+                                                                                                  scale, smoothArea)
+                parameterInfo.append([file, index, lb, ub, res, octaves, persistence, lacunarity, scale, smoothArea, centX, centY, r])  # ほかのパラメタも一応入れとく。
+                index += 1
 
+        bboxInfo.append([file, left1, top1, right1, bottom1, left2, top2, right2, bottom2, left3, top3, right3, bottom3, left4, top4, right4, bottom4])
         newImages[i], maskImages[i] = newImg, segMaskImg
 
     #save
@@ -197,19 +214,29 @@ if __name__ == '__main__':
     # file name index
     with open(normalIdList, 'r') as f:
         read = csv.reader(f)
-        ll = list(read)[0]
+        ll = list(read)
     f.close()
 
-    if len(args)>10:
+    # 一応両方バージョン書いとく。
+    if len(ll) <= 2: #１行版
+        ll = ll[0] # [ll[0][i] for i in range(len(ll))]
+    else: #改行版
+        ll = [ll[i][0] for i in range(len(ll))]
+
+
+    if len(args)>9:
         #values are given by hands
-        lb=int(args[7])
-        ub=int(args[8])
-        res=int(args[9])
-        octaves=int(args[10])
-        persistence=float(args[11])
-        lacunarity=int(args[12])
-        scale=float(args[13])
-        smoothArea=float(args[14])
+
+        #fix these for small bbox detection
+        lb=20 #int(args[7]) #20
+        ub=75 #int(args[8]) #75
+        res=int(args[7])
+        octaves=5 #int(args[10])
+        persistence=float(args[8])
+        lacunarity=int(args[9])
+        scale=float(args[10])
+        smoothArea=float(args[11])
+
     elif len(args)<=8:
         #len(args)==8
         #values are given through bufText

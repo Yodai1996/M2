@@ -3,7 +3,7 @@
 #PJM -g jh170036a
 #PJM -L rscgrp=share
 #PJM -L gpu=1
-#PJM -L elapse=10:00:00
+#PJM -L elapse=30:00:00
 #PJM --fs /work,/data
 #PJM -N training
 #PJM -o train.txt
@@ -19,69 +19,34 @@ cd "${PJM_O_WORKDIR}" || exit
 
 #pipenv shell #activate the virtual environment
 
-trainPath='AbnormalDir1000'
-validPath='AbnormalDir4880'
-trainBbox='abnormal1000_bboxinfo.csv'
-validBbox='abnormal4880_bboxinfo.csv'
+i=1 #1,2,3,4,5
+trainPath="sim${i}_1000"
+trainBbox="simDataInfo/bboxInfo/bboxInfo${i}_1000.csv"
+validPath='AllDataDir' #'AbnormalDir'
+validBboxName='rare_small_bboxInfo_20_1_withNormal'
+#validBbox="${validBboxName}.csv"
 
-#i="_AllRealAb_withInDim1" #non-sense
-#i="_unpretrained" #non-sense
-i="0" #nonsense
-
-#i=3 #1,2,3,4,5
-#trainPath="sim${i}_1000"
-#trainBbox="simDataInfo/bboxInfo/bboxInfo${i}_1000.csv"
-#validPath='AbnormalDir10'
-#validBbox='abnormal10_bboxinfo.csv'
-
-#i=3
-#trainPath="ver${i}_1000"
-#trainBbox="simDataInfo/bboxInfo/curriculumBO/start0.5_decay0.9_VSGD_Dice_variability0.01_decay0.9/bboxInfo${i}_1000.csv"
-#validPath="ver${i}_200"
-#validBbox="simDataInfo/bboxInfo/curriculumBO/start0.5_decay0.9_VSGD_Dice_variability0.01_decay0.9/bboxInfo${i}_200.csv"
-
-#i=7
-#trainPath="ver${i}_1000"
-#trainBbox="simDataInfo/bboxInfo/curriculumBO/start1.0_decay0.9_VSGD_Dice_variability0.01_decay1.0/bboxInfo${i}_1000.csv"
-#validPath="ver${i}_200"
-#validBbox="simDataInfo/bboxInfo/curriculumBO/start1.0_decay0.9_VSGD_Dice_variability0.01_decay1.0/bboxInfo${i}_200.csv"
-
-#trainPath='sim2_abnormal1000' #'train1/1_abnormal1000_1'
-#validPath='sim2_abnormal200' #'train1/1_abnormal200_1'
-#trainBbox='simDataInfo/bboxInfo/bboxInfo_2.csv'
-#validBbox='simDataInfo/bboxInfo/bboxInfo2_200.csv'
-
-#trainPath='sim5_1000' #'train1/1_abnormal1000_1'
-#validPath='sim5_200' #'train1/1_abnormal200_1'
-#trainBbox='simDataInfo/bboxInfo/bboxInfo5_1000.csv' #'simDataInfo/bboxInfo/bboxInfo_1.csv'
-#validBbox='simDataInfo/bboxInfo/bboxInfo5_200.csv'
-
-#testPath='AbnormalDir'
-#testBbox='abnormal_bboxinfo.csv'
-
-#trainPath='sim5_1000' #'train1/1_abnormal1000_1'
-#trainBbox='simDataInfo/bboxInfo/bboxInfo5_1000.csv' #'simDataInfo/bboxInfo/bboxInfo_1.csv'
-#validPath='AbnormalDir10'
-#validBbox='abnormal10_bboxinfo.csv'
-
-#testPath='AbnormalDir5880'
-testPath='AbnormalDir' #大は小を兼ねるはず
-testBbox='abnormal5880_bboxinfo.csv'
-#testBbox='abnormal4880_bboxinfo.csv'
+testPath='AllDataDir' #'AbnormalDir'
+testBboxName='rare_small_bboxInfo_81_1_withNormal'
+#testBbox="${testBboxName}.csv"
 
 modelPath="/work/gk36/k77012/M2/model/"
+saveFROCPath="/work/gk36/k77012/M2/FROC/"
 
 epoch=40
 batch_size=64
 numSamples=50
 
-model='SSD'
-pretrained='pretrained'  #'unpretrained'
-mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}/" #for saving Dir
-mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}/train"
-mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}/valid"
-mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}/test"
+#optimizerはAdamでいいか
 
-#python ../codes/train.py ${trainPath} ${validPath} ${testPath} ${trainBbox} ${validBbox} ${testBbox} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained}>> ../train_log/${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
-pipenv run python ../WisteriaCodes/train.py ${trainPath} ${validPath} ${testPath} ${trainBbox} ${validBbox} ${testBbox} ${modelPath} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained} ${i}>> ../train_log/${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
+model='SSD'
+pretrained="ImageNet" #'BigBbox' #"ImageNet" as default
+
+saveDir="/work/gk36/k77012/M2/result/${trainPath}_${validBboxName}_${testBboxName}_${model}_batch${batch_size}_epoch${epoch}_pretrained${pretrained}/"
+mkdir -p ${saveDir} #for saving Dir
+mkdir -p "${saveDir}/train"
+mkdir -p "${saveDir}/valid"
+mkdir -p "${saveDir}/test"
+
+pipenv run python ../WisteriaCodes/train.py ${trainPath} ${validPath} ${testPath} ${trainBbox} ${validBboxName} ${testBboxName} ${modelPath} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained} ${saveDir} ${saveFROCPath} ${i} >> ../train_log/${trainPath}_${validBboxName}_${testBboxName}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}_${i}.txt
 echo 'training_finished'
