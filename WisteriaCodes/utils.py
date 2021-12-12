@@ -571,9 +571,9 @@ def evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP
     return TP, FP
 
 
-def FROC(dataloader, model, hit_thres=0.2, size_thres=150 * 300 / 1024, ignore_big_bbox=False, accept_TP_duplicate=True):
+def FROC(dataloader, model, hit_thres=0.2, size_thres=150 * 300 / 1024, thresholds=[0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1], ignore_big_bbox=False, accept_TP_duplicate=True):
 
-    thresholds = [0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]  # 仮に。もっと細かくしてもよい。
+    #thresholds = [0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]  # 仮に。もっと細かくしてもよい。
     numThres = len(thresholds)
 
     numTP = np.zeros(numThres)  # [0] * numThres
@@ -659,6 +659,11 @@ def FAUC(TPRs, FPIs):
         TPRs = list(reversed(TPRs))
         FPIs = list(reversed(FPIs))
 
+    #例外処理
+    if FPIs[-1] < 1:
+        return 0
+
+    #else:
     # interpolate
     y, index = interpolate(TPRs, FPIs, 1)
 
@@ -685,6 +690,10 @@ def CPM(TPRs, FPIs):
         TPRs = list(reversed(TPRs))
         FPIs = list(reversed(FPIs))
 
+    #例外処理
+    if FPIs[-1] < 8:
+        return 0
+
     for x in xs:
         # interpolate
         y, _ = interpolate(TPRs, FPIs, x)
@@ -705,6 +714,10 @@ def RCPM(TPRs, FPIs):
         TPRs = list(reversed(TPRs))
         FPIs = list(reversed(FPIs))
 
+    #例外処理
+    if FPIs[-1] < 1:
+        return 0
+
     for x in xs:
         # interpolate
         y, _ = interpolate(TPRs, FPIs, x)
@@ -713,7 +726,24 @@ def RCPM(TPRs, FPIs):
     return sums/len(xs)
 
 
-def plotFROC(TPRs, FPIs, savePath):
+def plotFROC(TPRs, FPIs, savePath, include_FPIs=8):
+    #include_FPIs: 少なくとも含むべきxの範囲。すなわち、これ以上のところは可視化する際にはカットする。
+
+    # Preprocessing: make the input an ascending order
+    if TPRs[0] > TPRs[-1]:
+        TPRs = list(reversed(TPRs))
+        FPIs = list(reversed(FPIs))
+
+    #case distinction for visualization
+    if include_FPIs < FPIs[-1]:
+
+        # interpolate
+        _, index = interpolate(TPRs, FPIs, include_FPIs)
+
+        # delete the area outside of include_FPIs
+        FPIs = FPIs[:index + 2]
+        TPRs = TPRs[:index + 2]
+
     plt.figure()
     plt.plot(FPIs, TPRs, 'o-')  #点を表示させないなら、plt.plot(FPIs, TPRs)でよい。
     plt.xlabel('FPavg')
