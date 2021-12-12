@@ -19,10 +19,14 @@ cd "${PJM_O_WORKDIR}" || exit
 
 #pipenv shell #activate the virtual environment
 
-#trainPath='AbnormalDir1000'
-#validPath='AbnormalDir4880'
-#trainBbox='abnormal1000_bboxinfo.csv'
-#validBbox='abnormal4880_bboxinfo.csv'
+trainPath='AbnormalDir1000'
+validPath='AbnormalDir4880'
+trainBbox='abnormal1000_bboxinfo.csv'
+validBbox='abnormal4880_bboxinfo.csv'
+
+#i="_AllRealAb_withInDim1" #non-sense
+#i="_unpretrained" #non-sense
+i="0" #nonsense
 
 #i=3 #1,2,3,4,5
 #trainPath="sim${i}_1000"
@@ -36,11 +40,11 @@ cd "${PJM_O_WORKDIR}" || exit
 #validPath="ver${i}_200"
 #validBbox="simDataInfo/bboxInfo/curriculumBO/start0.5_decay0.9_VSGD_Dice_variability0.01_decay0.9/bboxInfo${i}_200.csv"
 
-i=7
-trainPath="ver${i}_1000"
-trainBbox="simDataInfo/bboxInfo/curriculumBO/start1.0_decay0.9_VSGD_Dice_variability0.01_decay1.0/bboxInfo${i}_1000.csv"
-validPath="ver${i}_200"
-validBbox="simDataInfo/bboxInfo/curriculumBO/start1.0_decay0.9_VSGD_Dice_variability0.01_decay1.0/bboxInfo${i}_200.csv"
+#i=7
+#trainPath="ver${i}_1000"
+#trainBbox="simDataInfo/bboxInfo/curriculumBO/start1.0_decay0.9_VSGD_Dice_variability0.01_decay1.0/bboxInfo${i}_1000.csv"
+#validPath="ver${i}_200"
+#validBbox="simDataInfo/bboxInfo/curriculumBO/start1.0_decay0.9_VSGD_Dice_variability0.01_decay1.0/bboxInfo${i}_200.csv"
 
 #trainPath='sim2_abnormal1000' #'train1/1_abnormal1000_1'
 #validPath='sim2_abnormal200' #'train1/1_abnormal200_1'
@@ -73,11 +77,11 @@ numSamples=50
 
 model='SSD'
 pretrained='pretrained'  #'unpretrained'
-mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}_Dice/" #for saving Dir
-mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}_Dice/train"
-mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}_Dice/valid"
-mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}_Dice/test"
+mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}/" #for saving Dir
+mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}/train"
+mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}/valid"
+mkdir -p "/work/gk36/k77012/M2/result/${trainPath}_${validPath}_${model}_batch${batch_size}_epoch${epoch}_${pretrained}/test"
 
 #python ../codes/train.py ${trainPath} ${validPath} ${testPath} ${trainBbox} ${validBbox} ${testBbox} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained}>> ../train_log/${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
-pipenv run python ../WisteriaCodes/train.py ${trainPath} ${validPath} ${testPath} ${trainBbox} ${validBbox} ${testBbox} ${modelPath} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained} ${i}>> ../train_log/${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}_Dice.txt
+pipenv run python ../WisteriaCodes/train.py ${trainPath} ${validPath} ${testPath} ${trainBbox} ${validBbox} ${testBbox} ${modelPath} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained} ${i}>> ../train_log/${trainPath}_${validPath}_${testPath}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
 echo 'training_finished'

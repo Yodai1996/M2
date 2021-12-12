@@ -26,7 +26,7 @@ pretrained, version = args[12], args[13]
 trainDir = "/work/gk36/k77012/M2/data/{}/".format(trainPath)
 validDir = "/work/gk36/k77012/M2/data/{}/".format(validPath)
 testDir = "/work/gk36/k77012/M2/data/{}/".format(testPath)
-saveDir = "/work/gk36/k77012/M2/result/{}_{}_{}_batch{}_epoch{}_{}_Dice/".format(trainPath, validPath, modelName, batch_size, num_epoch, pretrained)
+saveDir = "/work/gk36/k77012/M2/result/{}_{}_{}_batch{}_epoch{}_{}/".format(trainPath, validPath, modelName, batch_size, num_epoch, pretrained)
 df = pd.read_csv("/work/gk36/k77012/M2/{}".format(trainBbox))
 df_valid = pd.read_csv("/work/gk36/k77012/M2/{}".format(validBbox))
 df_test = pd.read_csv("/work/gk36/k77012/M2/{}".format(testBbox))
@@ -46,9 +46,11 @@ transform = transforms.Compose([
     transforms.Resize((size, size)),
     transforms.ToTensor()  # これを挟むと自動で[0,1)に正規化される
 ])
-trainset = MyDataset(df, transform=transform)
-validset = MyDataset(df_valid, transform=transform)
-testset = MyDataset(df_test, transform=transform)
+
+inDim = 3 #3
+trainset = MyDataset(df, transform=transform, inDim=inDim)
+validset = MyDataset(df_valid, transform=transform, inDim=inDim)
+testset = MyDataset(df_test, transform=transform, inDim=inDim)
 trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
