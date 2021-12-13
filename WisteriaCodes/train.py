@@ -37,7 +37,6 @@ df_test = pd.read_csv("/work/gk36/k77012/M2/{}".format(testBbox))
 originalSize = 1024
 size = 300
 lr = 0.0002
-numDisplay = 2 #the number of predicted bboxes to display, also used when calculating mIoU.
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 df = preprocess_df(df, originalSize, size, trainDir)
@@ -82,51 +81,41 @@ for epoch in range(num_epoch):
 
     train_loss = train(trainloader, model, optimizer)
 
+    thresholds = [0.00001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
+
+    #see the performance on the training dataset
+    TPRs, FPIs, thresholds = FROC(trainloader, model, thresholds=thresholds) #, ignore_big_bbox=Trueは合ってもなくても同じ。そもそも大bboxはないので。
+    fauc_train = FAUC(TPRs, FPIs)
+    rcpm_train = RCPM(TPRs, FPIs)
+
     # validation
     with torch.no_grad():
 
-        thresholds = [0.00001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
-
+        #不要だがまあ一応。
         TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds)
-        # print(TPRs)
-        # print(FPIs)
-        # print(thresholds)
         fauc = FAUC(TPRs, FPIs)
-        #cpm = CPM(TPRs, FPIs)
         rcpm = RCPM(TPRs, FPIs)
-
-        #strict
-        TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, accept_TP_duplicate=False)
-        fauc_strict = FAUC(TPRs, FPIs)
-        #cpm_strict = CPM(TPRs, FPIs)
-        rcpm_strict = RCPM(TPRs, FPIs)
 
         #Ignore Big
         TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_big_bbox=True)
         fauc_IB = FAUC(TPRs, FPIs)
-        #cpm_strict = CPM(TPRs, FPIs)
         rcpm_IB = RCPM(TPRs, FPIs)
 
-        #strict, Ignore Big
-        TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_big_bbox=True, accept_TP_duplicate=False)
-        fauc_strict_IB = FAUC(TPRs, FPIs)
-        #cpm_strict = CPM(TPRs, FPIs)
-        rcpm_strict_IB = RCPM(TPRs, FPIs)
-
-        if fauc_strict > best_value:
-            best_value = fauc_strict
+        if fauc_IB > best_value:
+            best_value = fauc_IB
             best_model = copy.deepcopy(model.state_dict())
             best_epoch = epoch
 
-            TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, accept_TP_duplicate=False)
+            TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, ignore_big_bbox=True)
             test_performance = FAUC(TPRs, FPIs)
 
     #print("epoch:{}/{}  train_loss:{:.4f}  val_loss:{:.4f}  val_mDice:{:.4f}  val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}  val_faucStrict:{:.4f}  val_cpmStrict:{:.4f}  val_rcpmStrict:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, mdice, fauc, cpm, rcpm, fauc_strict, cpm_strict, rcpm_strict))
     #print("epoch:{}/{}  train_loss:{:.4f}   val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}  val_faucStrict:{:.4f}  val_cpmStrict:{:.4f}  val_rcpmStrict:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc, cpm, rcpm, fauc_strict, cpm_strict, rcpm_strict))
-    print("epoch:{}/{}  train_loss:{:.4f}   val_fauc:{:.4f}   val_rcpm:{:.4f}  val_faucStrict:{:.4f}  val_rcpmStrict:{:.4f}   val_fauc_IB:{:.4f}  val_rcpm_IB:{:.4f}   val_faucStrict_IgnoreBig:{:.4f}  val_rcpmStrict_IgnoreBig:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc, rcpm, fauc_strict, rcpm_strict, fauc_IB, rcpm_IB, fauc_strict_IB, rcpm_strict_IB))
+    #print("epoch:{}/{}  train_loss:{:.4f}   val_fauc:{:.4f}   val_rcpm:{:.4f}  val_faucStrict:{:.4f}  val_rcpmStrict:{:.4f}   val_fauc_IB:{:.4f}  val_rcpm_IB:{:.4f}   val_faucStrict_IgnoreBig:{:.4f}  val_rcpmStrict_IgnoreBig:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc, rcpm, fauc_strict, rcpm_strict, fauc_IB, rcpm_IB, fauc_strict_IB, rcpm_strict_IB))
+    print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}    val_fauc:{:.4f}   val_rcpm:{:.4f}   val_fauc_IB:{:.4f}  val_rcpm_IB:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc, rcpm, fauc_IB, rcpm_IB)) #strict is deleted
 
-print("best_faucStrict:{:.4f}   (epoch:{})".format(best_value, best_epoch + 1))
-print("test_faucStrict:{:.4f}, at the epoch.".format(test_performance))
+print("best_fauc_IgnoreBigBbox:{:.4f}   (epoch:{})".format(best_value, best_epoch + 1))
+print("test_fauc_IgnoreBigBbox:{:.4f}, at the epoch.".format(test_performance))
 
 #save the model since we might use it later
 PATH = modelPath + f"model_version{version}_{trainPath}_{validBboxName}_{pretrained}_epoch{num_epoch}"
@@ -134,38 +123,20 @@ torch.save(best_model, PATH) #best_model
 model.load_state_dict(torch.load(PATH)) #visualizationのときにもこのbest modelを用いることにする。
 
 
-#visualize the fROC
-TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, accept_TP_duplicate=False)
+#visualize the fROC in which bigboxes are ignored
+#validation
+TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_big_bbox=True)
 fauc = FAUC(TPRs, FPIs)
-#cpm = CPM(TPRs, FPIs)
 rcpm = RCPM(TPRs, FPIs)
-#print("FROC_valid_strict                 val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}".format(fauc, cpm, rcpm))
-print("FROC_valid_strict                 val_fauc:{:.4f}  val_rcpm:{:.4f}".format(fauc, rcpm))
-plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_valid_strict_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{num_epoch}_version{version}.png")
+print("FROC_valid_ignoreBigBbox   val_fauc:{:.4f}  val_rcpm:{:.4f}".format(fauc, rcpm))
+plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_valid_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{num_epoch}_version{version}.png")
 
-TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, accept_TP_duplicate=False)
+#test
+TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, ignore_big_bbox=True)
 fauc = FAUC(TPRs, FPIs)
-#cpm = CPM(TPRs, FPIs)
 rcpm = RCPM(TPRs, FPIs)
-#print("FROC_test_strict                  val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}".format(fauc, cpm, rcpm))
-print("FROC_test_strict                  val_fauc:{:.4f}  val_rcpm:{:.4f}".format(fauc, rcpm))
-plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_test_strict_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{num_epoch}_version{version}.png")
-
-TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_big_bbox=True, accept_TP_duplicate=False)
-fauc = FAUC(TPRs, FPIs)
-#cpm = CPM(TPRs, FPIs)
-rcpm = RCPM(TPRs, FPIs)
-#print("FROC_valid_strict_ignoreBigBbox   val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}".format(fauc, cpm, rcpm))
-print("FROC_valid_strict_ignoreBigBbox   val_fauc:{:.4f}  val_rcpm:{:.4f}".format(fauc, rcpm))
-plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_valid_strict_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{num_epoch}_version{version}.png")
-
-TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, ignore_big_bbox=True, accept_TP_duplicate=False)
-fauc = FAUC(TPRs, FPIs)
-#cpm = CPM(TPRs, FPIs)
-rcpm = RCPM(TPRs, FPIs)
-#print("FROC_test_strict_ignoreBigBbox    val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}".format(fauc, cpm, rcpm))
-print("FROC_test_strict_ignoreBigBbox    val_fauc:{:.4f}   val_rcpm:{:.4f}".format(fauc, rcpm))
-plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_test_strict_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{num_epoch}_version{version}.png")
+print("FROC_test_ignoreBigBbox    val_fauc:{:.4f}   val_rcpm:{:.4f}".format(fauc, rcpm))
+plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_test_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{num_epoch}_version{version}.png")
 
 
 #modify and redefine again to use in visualization
@@ -174,6 +145,6 @@ validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_mem
 testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
 # visualization of training, validation and testing
-visualize(model, trainloader, df, numSamples, saveDir + "train/", numDisplay)
-visualize(model, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
-visualize(model, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
+visualize(model, trainloader, df, numSamples, saveDir + "train/", thres=0.3)
+visualize(model, validloader, df_valid, numSamples, saveDir + "valid/", thres=0.3)
+visualize(model, testloader, df_test, numSamples, saveDir + "test/", thres=0.3)
