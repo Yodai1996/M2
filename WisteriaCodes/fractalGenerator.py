@@ -255,14 +255,16 @@ if __name__ == '__main__':
         values = [float(i) for i in values]
 
         # preprocess
-        lb = int(30 + 50 * values[0])  # [30,80]
-        ub = int(100 + 120 * values[1])  # [100,220]
-        res = int(2 + 4 * values[2])
+        # fix these for small bbox detection
+        lb = 20  # int(30 + 50 * values[0])  #[30,80]
+        ub = 75  # int(100 + 120 * values[1]) #[100,220]
         octaves = 5  # fixed
-        persistence = 0.2 + 0.8 * values[3]  # [0.2,1]
-        lacunarity = int(2 + 3 * values[4])
-        scale = 0.1 + 0.9 * values[5]  # [0.1,1]
-        smoothArea = 0.2 + 0.6 * values[6]  # [0.2,0.8]
+        res = int(2 + 4 * values[0])
+        persistence = 0.2 + 0.8 * values[1]  # [0.2,1]
+        lacunarity = int(2 + 3 * values[2])
+        scale = 0.1 + 0.9 * values[3]  # [0.1,1]
+        smoothArea = 0.2 + 0.6 * values[4]  # [0.2,0.8]
+
     else:
         print("arguments error happening")
         exit()

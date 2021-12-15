@@ -1,27 +1,35 @@
 import sys
-import pandas as pd
-from skimage import io, transform
+import math
+import matplotlib.pyplot as plt
+import numpy as np
+import csv
 from PIL import Image, ImageDraw, ImageFilter
+import scipy.sparse as sp
+import pandas as pd
+from numpy.random import *
 
 import torch
 from torch import nn, optim
 import torch.nn.functional as F
-
-from torchvision import models, transforms, datasets
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torch.utils.data import Dataset, DataLoader
-import numpy as np
 import copy
 
+from torchvision import models, transforms, datasets
+from skimage.transform import resize
+
+from fractalGenerator import make_abnormals
+from perlin_numpy import generate_perlin_noise_2d, generate_fractal_noise_2d
+
+from skimage import io, transform
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, trainWithCls, mDice
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice, FROC, FAUC, CPM, RCPM, plotFROC
 
 args = sys.argv
 trainPath, validPath, realValidPath, testPath, trainBbox, validBbox, realValidBbox, testBbox, modelPath, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10]
 num_epoch, batch_size, numSamples, version = int(args[11]), int(args[12]), int(args[13]), int(args[14])
-savePath, optimizerName, metric = args[15], args[16], args[17]
+savePath, optimizerName, pretrained = args[15], args[16], args[17]
 if optimizerName=='VSGD':
     variability, decayRate = float(args[18]), float(args[19])
 
@@ -38,7 +46,6 @@ df_test = pd.read_csv("/work/gk36/k77012/M2/{}".format(testBbox))
 originalSize = 1024
 size = 300
 lr = 0.0002
-numDisplay = 2 #the number of predicted bboxes to display, also used when calculating mIoU.
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 df = preprocess_df(df, originalSize, size, trainDir)
@@ -60,24 +67,21 @@ realValidloader = DataLoader(realValidset, batch_size=batch_size, shuffle=False,
 testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
 num_classes = 2 #(len(classes)) + 1
-pretrained = "pretrained"
 if modelName=="SSD":
-    if pretrained=="pretrained":
+    if pretrained=="pretrained" or pretrained=="ImageNet": #same meaning
         model = models.detection.ssd300_vgg16(pretrained=True).to(device)
     else:
         model = models.detection.ssd300_vgg16(pretrained=False).to(device)
     model2 = models.detection.ssd300_vgg16(num_classes = num_classes) #models.detection.ssd300_vgg16(num_classes = num_classes, pretrained=False, pretrained_backbone=False)
     model.head.classification_head = model2.head.classification_head.to(device)  #modify the head of the model
-else:  #modelName=="fasterRCNN"
-    model = models.detection.fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone=False).to(device)
-    if pretrained == "pretrained":
-        model.load_state_dict(torch.load("/work/gk36/k77012/M2/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth"))  # model.load_state_dict(torch.load("/work/gk36/k77012/faster_RCNN.pth"))
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes).to(device)
+
+    if pretrained=="BigBbox":
+        loadModelPath=modelPath+"pretrain/model_nonSmall_bboxInfo_655_nonSmall_bboxInfo_164_withNormal_VSGD_0.01_120" #とりあえず、VSGD, noise=0.01を使用すれことにする。
+        model.load_state_dict(torch.load(loadModelPath))
 
 #load the previously trained model
 if version >= 2:
-    PATH = modelPath + "model" + str(version-1) #"{}/model{}".format(modelPath, version-1) #"/work/gk36/k77012/M2/model/{}/{}/model{}".format(modelPath, optimizerName, version - 1) #version-1 represents the previous step
+    PATH = modelPath + "model" + str(version-1)
     model.load_state_dict(torch.load(PATH))
 
 #will be used to check catastrophic forgetting
@@ -105,93 +109,64 @@ if optimizerName=='VSGD':
     num_iters = len(trainloader) #it will be the ceiling of num_data/batch_size
     variability = variability * (decayRate**version) #by default, variability=0.01, decayRate=1. #reduce the epsilon by calculating variability * (decayRate)**version
     optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
-elif optimizerName=="SAM":
-    from optimizers.sam import SAMSGD
-    optimizer = SAMSGD(model.parameters(), lr=lr, rho=0.05)
 else:
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-
-best_miou = 0
-best_epoch = None
-best_mdice = 0
-#best_map = 0
+best_value = 0
+best_epoch = -100 #as default
 best_model = None
 realValid_performance = 0
 test_performance = 0
 
 for epoch in range(num_epoch):
 
-    if optimizerName == "SAM":
-        train_loss = trainWithCls(trainloader, model, optimizer)  #SAMの場合はclosureにしないといけなそう.
-    else:
-        train_loss = train(trainloader, model, optimizer)
+    train_loss = train(trainloader, model, optimizer)
+
+    #see the performance on the training dataset
+    TPRs, FPIs, thresholds = FROC(trainloader, model) #, ignore_big_bbox=Trueは合ってもなくても同じ。そもそも大bboxはないので。
+    fauc_train = FAUC(TPRs, FPIs)
+    rcpm_train = RCPM(TPRs, FPIs)
+    #cpm_train  = CPM(TPRs, FPIs)
 
     # validation
     with torch.no_grad():
-        valid_loss = valid(validloader, model)
-        realValid_loss = valid(realValidloader, model)
-        #test_loss = valid(testloader, model)
 
-        #calculate performance of mean IoU
-        miou = mIoU(validloader, model, numDisplay)
-        mdice = mDice(validloader, model, numDisplay)
-        realValmiou = mIoU(realValidloader, model, numDisplay)
-        realValmdice= mDice(realValidloader, model, numDisplay)
-        testmiou = mIoU(testloader, model, numDisplay)
-        testmdice= mDice(testloader, model, numDisplay)
+        #Ignore Big
+        TPRs, FPIs, thresholds = FROC(validloader, model, ignore_big_bbox=True)
+        fauc_IB = FAUC(TPRs, FPIs)
+        rcpm_IB = RCPM(TPRs, FPIs)
+        cpm_IB  = CPM(TPRs, FPIs)
 
-        # updathe the best performance
-        if metric=="IoU":
-            #update IoU
-            if miou > best_miou:
-                best_miou = miou
-                best_model = copy.deepcopy(model.state_dict())
-                best_epoch = epoch
-                realValid_performance = realValmiou
-                test_performance = testmiou #update the test performance
-            best_mdice = max(best_mdice, mdice)
-        else: #metric=="Dice"
-            #update dice
-            if mdice > best_mdice:
-                best_mdice = mdice
-                best_model = copy.deepcopy(model.state_dict())
-                best_epoch = epoch
-                realValid_performance = realValmdice
-                test_performance = testmdice #update the test performance
-            best_miou = max(best_miou, miou)
+        #Ignore Big
+        TPRs, FPIs, thresholds = FROC(realValidloader, model, ignore_big_bbox=True)
+        fauc_realValid_IB = FAUC(TPRs, FPIs)
+        rcpm_realValid_IB = RCPM(TPRs, FPIs)
+        cpm_realValid_IB  = CPM(TPRs, FPIs)
 
-        #best_map = max(best_map, map)
+        if fauc_IB > best_value:
+            best_value = fauc_IB
+            best_model = copy.deepcopy(model.state_dict())
+            best_epoch = epoch
+            realValid_performance = fauc_realValid_IB
 
+            TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, ignore_big_bbox=True)
+            test_performance = FAUC(TPRs, FPIs)
 
-    print(
-        "epoch:{}/{}  tr_loss:{:.3f}  val_loss:{:.3f}  val_IoU:{:.3f}  val_Dice:{:.3f}  realVal_loss:{:.3f}  realVal_IoU:{:.3f}  realVal_Dice:{:.3f}  test_IoU:{:.3f}  test_Dice:{:.3f}".format(
-            epoch + 1, num_epoch, train_loss, valid_loss, miou, mdice, realValid_loss, realValmiou, realValmdice, testmiou, testmdice), end="  ")
+    print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}   val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}   realVal_fauc:{:.4f}   realVal_cpm:{:.4f}  realVal_rcpm:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc_IB, cpm_IB, rcpm_IB, fauc_realValid_IB, cpm_realValid_IB, rcpm_realValid_IB)) #strict is deleted
 
     #check catastrophic forgetting
-    if metric == "IoU":
-        for i,loader in enumerate(prevList):
-            sim_i_miou = mIoU(loader, model, numDisplay)
-            print("sim{}IoU:{:.3f}".format(i+1, sim_i_miou), end="  ")
-    else:  # metric=="Dice"
-        for i,loader in enumerate(prevList):
-            sim_i_mdice = mDice(loader, model, numDisplay)
-            print("sim{}Dice:{:.3f}".format(i+1, sim_i_mdice), end="  ")
+    for i,loader in enumerate(prevList):
+        TPRs, FPIs, thresholds = FROC(loader, model, ignore_big_bbox=True)
+        sim_i_fauc = FAUC(TPRs, FPIs)
+        print("sim{}FAUC:{:.3f}".format(i+1, sim_i_fauc), end="  ")
 
     #改行
     print()
 
-#printing the results
-if metric == "IoU":
-    print("best_mIoU:{:.3f}  (epoch:{}),  best_mDice:{:.3f}".format(best_miou, best_epoch + 1, best_mdice))
-    print("---At the epoch, performances are as follows:---")
-    print("realValid_mIoU:{:.3f}".format(realValid_performance))
-    print("test_mIoU:{:.3f}".format(test_performance))
-else: # metric=="Dice"
-    print("best_mDice:{:.3f}  (epoch:{}),  best_mIoU:{:.3f}".format(best_mdice, best_epoch + 1, best_miou))
-    print("---At the epoch, performances are as follows:---")
-    print("realValid_mDice:{:.3f}".format(realValid_performance))
-    print("test_mDice:{:.3f}".format(test_performance))
+print("best_fauc_IgnoreBigBbox:{:.4f}   (epoch:{})".format(best_value, best_epoch + 1))
+print("---At the epoch, performances are as follows:---")
+print("realValid_FAUC:{:.3f}".format(realValid_performance))
+print("test_FAUC:{:.3f}".format(test_performance))
 
 #save the model since we might use it later
 PATH = modelPath + "model" + str(version)
@@ -205,7 +180,7 @@ validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_mem
 testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
 # visualization of training, validation and testing
-visualize(model, trainloader, df, numSamples, saveDir + "train/", numDisplay)
-visualize(model, validloader, df_valid, numSamples, saveDir + "valid/", numDisplay)
-visualize(model, realValidloader, df_realValid, numSamples, saveDir + "realValid/", numDisplay)
-visualize(model, testloader, df_test, numSamples, saveDir + "test/", numDisplay)
+visualize(model, trainloader, df, numSamples, saveDir + "train/", thres=0.3)
+visualize(model, validloader, df_valid, numSamples, saveDir + "valid/", thres=0.3)
+visualize(model, realValidloader, df_realValid, numSamples, saveDir + "realValid/", thres=0.3)
+visualize(model, testloader, df_test, numSamples, saveDir + "test/", thres=0.3)
