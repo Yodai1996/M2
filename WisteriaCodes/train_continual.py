@@ -76,7 +76,7 @@ if modelName=="SSD":
     model.head.classification_head = model2.head.classification_head.to(device)  #modify the head of the model
 
     if pretrained=="BigBbox":
-        loadModelPath=modelPath+"pretrain/model_nonSmall_bboxInfo_655_nonSmall_bboxInfo_164_withNormal_VSGD_0.01_120" #とりあえず、VSGD, noise=0.01を使用すれことにする。
+        loadModelPath = "/work/gk36/k77012/M2/model/pretrain/model_nonSmall_bboxInfo_655_nonSmall_bboxInfo_164_withNormal_VSGD_0.01_120"  # とりあえず、VSGD, noise=0.01を使用すれことにする。
         model.load_state_dict(torch.load(loadModelPath))
 
 #load the previously trained model
@@ -152,7 +152,7 @@ for epoch in range(num_epoch):
             TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, ignore_big_bbox=True)
             test_performance = FAUC(TPRs, FPIs)
 
-    print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}   val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}   realVal_fauc:{:.4f}   realVal_cpm:{:.4f}  realVal_rcpm:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc_IB, cpm_IB, rcpm_IB, fauc_realValid_IB, cpm_realValid_IB, rcpm_realValid_IB)) #strict is deleted
+    print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}   val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}   realVal_fauc:{:.4f}   realVal_cpm:{:.4f}  realVal_rcpm:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc_IB, cpm_IB, rcpm_IB, fauc_realValid_IB, cpm_realValid_IB, rcpm_realValid_IB), end="  ") #strict is deleted
 
     #check catastrophic forgetting
     for i,loader in enumerate(prevList):

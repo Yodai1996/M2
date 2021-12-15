@@ -14,7 +14,7 @@ for row in lineList:
 
     # delete \n
     if row[-1] == "\n":
-        row = row[:-2]
+        row = row[:-1]
 
     values = row.split(",")
     features = ",".join(values[:-1])
