@@ -571,8 +571,9 @@ def evaluate(trueBoxes, boxes, hit_thres, size_thres, ignore_big_bbox, accept_TP
     return TP, FP
 
 
-def FROC(dataloader, model, hit_thres=0.2, size_thres=150 * 300 / 1024, thresholds=[0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1], ignore_big_bbox=False, accept_TP_duplicate=True):
+def FROC(dataloader, model, hit_thres=0.2, size_thres=150 * 300 / 1024, thresholds=[0.01 * i for i in range(101)], ignore_big_bbox=False, accept_TP_duplicate=True):
 
+    #thresholds=[0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
     #thresholds = [0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]  # 仮に。もっと細かくしてもよい。
     numThres = len(thresholds)
 

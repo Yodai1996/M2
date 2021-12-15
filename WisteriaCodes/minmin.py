@@ -153,7 +153,8 @@ for epoch in range(num_epoch):
 
     train_loss = train(trainloader, model, optimizer)
 
-    thresholds = [0.00001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
+    # thresholds = [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
+    thresholds = [0.01 * i for i in range(101)]
 
     #see the performance on the training dataset
     TPRs, FPIs, thresholds = FROC(trainloader, model, thresholds=thresholds) #, ignore_big_bbox=Trueは合ってもなくても同じ。そもそも大bboxはないので。
