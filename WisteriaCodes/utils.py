@@ -746,7 +746,7 @@ def plotFROC(TPRs, FPIs, savePath, include_FPIs=8):
         TPRs = TPRs[:index + 2]
 
     plt.figure()
-    plt.plot(FPIs, TPRs, 'o-')  #点を表示させないなら、plt.plot(FPIs, TPRs)でよい。
+    plt.plot(FPIs, TPRs) #plt.plot(FPIs, TPRs, 'o-')  #点を表示させないなら、plt.plot(FPIs, TPRs)でよい。
     plt.xlabel('FPavg')
     plt.ylabel('Sensitivity')
 

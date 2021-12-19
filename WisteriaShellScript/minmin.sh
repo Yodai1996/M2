@@ -3,10 +3,10 @@
 #PJM -g jh170036a
 #PJM -L rscgrp=share
 #PJM -L gpu=1
-#PJM -L elapse=47:59:00
+#PJM -L elapse=47:00:00
 #PJM --fs /work,/data
 #PJM -N minmin-training
-#PJM -o minmin2.txt
+#PJM -o minmin.txt
 #PJM -j
 #PJM --mail-list suzuki-takahiro596@g.ecc.u-tokyo.ac.jp
 #PJM -m b
@@ -16,12 +16,14 @@ module load cuda/11.1
 
 cd "${PJM_O_WORKDIR}" || exit
 
-pretrained="ImageNet" #'BigBbox' #"ImageNet"
+fold=2 #modify here. 5-fold CV.
+
+pretrained='BigBbox' #"ImageNet"
 metric="FAUC_Pretrained${pretrained}"
 
 #for simulation
-boText="bo_minmin_${metric}.txt"
-bufText="buf_minmin_${metric}.txt"
+boText="bo_minmin_${metric}_${fold}.txt"
+bufText="buf_minmin_${metric}_${fold}.txt"
 
 m=1000
 normalDir="/work/gk36/k77012/M2/data/NormalDir/" #データプールなら何でもよい。
@@ -34,11 +36,11 @@ numSamples=50
 model='SSD'
 
 validPath='AllDataDir' #'AbnormalDir'
-validBboxName='rare_small_bboxInfo_20_1_withNormal'
+validBboxName="rare_small_bboxInfo_20_${fold}_withNormal"
 #validBbox="${validBboxName}.csv"
 
 testPath='AllDataDir' #'AbnormalDir'
-testBboxName='rare_small_bboxInfo_81_1_withNormal'
+testBboxName="rare_small_bboxInfo_81_${fold}_withNormal"
 #testBbox="${testBboxName}.csv"
 
 #make dir for model and log
@@ -52,10 +54,10 @@ do
   ./build/suggest --hm --ha --hpopt -a ei --md 5 --mi ./in/${boText} >> ../${bufText}
 
   trainPath="sim${i}_${m}"
-  abnormalDir="/work/gk36/k77012/M2/data/minmin_${metric}/${trainPath}/"
-  segMaskDir="/work/gk36/k77012/M2/SegmentationMask/minmin_${metric}/mask${i}_${m}/"
-  paraDir="/work/gk36/k77012/M2/simDataInfo/paraInfo/minmin_${metric}/"
-  bboxDir="/work/gk36/k77012/M2/simDataInfo/bboxInfo/minmin_${metric}/"
+  abnormalDir="/work/gk36/k77012/M2/data/minmin_${metric}_${fold}/${trainPath}/"
+  segMaskDir="/work/gk36/k77012/M2/SegmentationMask/minmin_${metric}_${fold}/mask${i}_${m}/"
+  paraDir="/work/gk36/k77012/M2/simDataInfo/paraInfo/minmin_${metric}_${fold}/"
+  bboxDir="/work/gk36/k77012/M2/simDataInfo/bboxInfo/minmin_${metric}_${fold}/"
   paraPath="${paraDir}/parameterInfo${i}_${m}.csv"
   bboxPath="${bboxDir}/bboxInfo${i}_${m}.csv"
 
