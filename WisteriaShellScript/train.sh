@@ -38,15 +38,16 @@ batch_size=64
 numSamples=50
 
 #optimizerはAdamでいいか
+optimizer="VSGD"
 
 model='SSD'
 pretrained="ImageNet" #'BigBbox' #"ImageNet" as default
 
-saveDir="/work/gk36/k77012/M2/result/${trainPath}_${validBboxName}_${testBboxName}_${model}_batch${batch_size}_epoch${epoch}_pretrained${pretrained}/"
+saveDir="/work/gk36/k77012/M2/result/${trainPath}_${validBboxName}_${testBboxName}_${model}_batch${batch_size}_epoch${epoch}_pretrained${pretrained}_${optimizer}/"
 mkdir -p ${saveDir} #for saving Dir
 mkdir -p "${saveDir}/train"
 mkdir -p "${saveDir}/valid"
 mkdir -p "${saveDir}/test"
 
-pipenv run python ../WisteriaCodes/train.py ${trainPath} ${validPath} ${testPath} ${trainBbox} ${validBboxName} ${testBboxName} ${modelPath} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained} ${saveDir} ${saveFROCPath} ${i} >> ../train_log/${trainPath}_${validBboxName}_${testBboxName}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}_${i}.txt
+pipenv run python ../WisteriaCodes/train.py ${trainPath} ${validPath} ${testPath} ${trainBbox} ${validBboxName} ${testBboxName} ${modelPath} ${model} ${epoch} ${batch_size} ${numSamples} ${pretrained} ${saveDir} ${saveFROCPath} ${i} ${optimizer} >> ../train_log/${trainPath}_${validBboxName}_${testBboxName}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}_${optimizer}_${i}.txt
 echo 'training_finished'

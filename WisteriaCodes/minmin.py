@@ -34,7 +34,7 @@ args = sys.argv
 version, boText, bufText, normalIdList, normalDir, abnormalDir, segMaskDir, saveParaPath, saveBboxPath = int(args[1]), args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]
 validPath, testPath, savePath, validBboxName, testBboxName, modelName, pretrained = args[10], args[11], args[12], args[13], args[14], args[15], args[16]
 num_epoch, batch_size, numSamples = int(args[17]), int(args[18]), int(args[19])
-modelPath, metric = args[20], args[21]
+modelPath, metric, optimizerName = args[20], args[21], args[22]
 
 validBbox, testBbox = validBboxName + ".csv", testBboxName + ".csv"  #valid と testだけBboxNameで引数渡した.
 
@@ -141,7 +141,13 @@ if modelName=="SSD":
         model.load_state_dict(torch.load(loadModelPath))
 
 # training
-optimizer = optim.Adam(model.parameters(), lr=lr)
+if optimizerName=='VSGD':
+    from optimizers.vsgd import VSGD
+    num_iters = len(trainloader) #it will be the ceiling of num_data/batch_size
+    variability = 0.01 #fixed for master thesis
+    optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
+else:
+    optimizer = optim.Adam(model.parameters(), lr=lr)
 
 best_value = 0
 best_epoch = -100 #as default

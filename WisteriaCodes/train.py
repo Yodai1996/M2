@@ -22,7 +22,7 @@ args = sys.argv
 
 trainPath, validPath, testPath, trainBbox, validBboxName, testBboxName, modelPath, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]
 num_epoch, batch_size, numSamples = int(args[9]), int(args[10]), int(args[11])
-pretrained, saveDir, saveFROCPath, version = args[12], args[13], args[14], args[15]
+pretrained, saveDir, saveFROCPath, version, optimizerName = args[12], args[13], args[14], args[15], args[16]
 
 validBbox, testBbox = validBboxName + ".csv", testBboxName + ".csv"  #valid と testだけBboxNameで引数渡した.
 
@@ -70,7 +70,14 @@ if modelName=="SSD":
         model.load_state_dict(torch.load(loadModelPath))
 
 # training
-optimizer = optim.Adam(model.parameters(), lr=lr)
+if optimizerName=='VSGD':
+    from optimizers.vsgd import VSGD
+    num_iters = len(trainloader) #it will be the ceiling of num_data/batch_size
+    variability = 0.01 #fixed for master thesis
+    optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
+else:
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+
 
 best_value = 0
 best_epoch = -100 #as default
@@ -81,10 +88,8 @@ for epoch in range(num_epoch):
 
     train_loss = train(trainloader, model, optimizer)
 
-    thresholds = [0.00001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
-
     #see the performance on the training dataset
-    TPRs, FPIs, thresholds = FROC(trainloader, model, thresholds=thresholds) #, ignore_big_bbox=Trueは合ってもなくても同じ。そもそも大bboxはないので。
+    TPRs, FPIs, thresholds = FROC(trainloader, model) #, ignore_big_bbox=Trueは合ってもなくても同じ。そもそも大bboxはないので。
     fauc_train = FAUC(TPRs, FPIs)
     rcpm_train = RCPM(TPRs, FPIs)
 
@@ -92,12 +97,12 @@ for epoch in range(num_epoch):
     with torch.no_grad():
 
         #不要だがまあ一応。
-        TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds)
+        TPRs, FPIs, thresholds = FROC(validloader, model)
         fauc = FAUC(TPRs, FPIs)
         rcpm = RCPM(TPRs, FPIs)
 
         #Ignore Big
-        TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_big_bbox=True)
+        TPRs, FPIs, thresholds = FROC(validloader, model, ignore_big_bbox=True)
         fauc_IB = FAUC(TPRs, FPIs)
         rcpm_IB = RCPM(TPRs, FPIs)
 
@@ -106,37 +111,34 @@ for epoch in range(num_epoch):
             best_model = copy.deepcopy(model.state_dict())
             best_epoch = epoch
 
-            TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, ignore_big_bbox=True)
+            TPRs, FPIs, thresholds = FROC(testloader, model, ignore_big_bbox=True)
             test_performance = FAUC(TPRs, FPIs)
 
-    #print("epoch:{}/{}  train_loss:{:.4f}  val_loss:{:.4f}  val_mDice:{:.4f}  val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}  val_faucStrict:{:.4f}  val_cpmStrict:{:.4f}  val_rcpmStrict:{:.4f}".format(epoch + 1, num_epoch, train_loss, valid_loss, mdice, fauc, cpm, rcpm, fauc_strict, cpm_strict, rcpm_strict))
-    #print("epoch:{}/{}  train_loss:{:.4f}   val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}  val_faucStrict:{:.4f}  val_cpmStrict:{:.4f}  val_rcpmStrict:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc, cpm, rcpm, fauc_strict, cpm_strict, rcpm_strict))
-    #print("epoch:{}/{}  train_loss:{:.4f}   val_fauc:{:.4f}   val_rcpm:{:.4f}  val_faucStrict:{:.4f}  val_rcpmStrict:{:.4f}   val_fauc_IB:{:.4f}  val_rcpm_IB:{:.4f}   val_faucStrict_IgnoreBig:{:.4f}  val_rcpmStrict_IgnoreBig:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc, rcpm, fauc_strict, rcpm_strict, fauc_IB, rcpm_IB, fauc_strict_IB, rcpm_strict_IB))
     print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}    val_fauc:{:.4f}   val_rcpm:{:.4f}   val_fauc_IB:{:.4f}  val_rcpm_IB:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc, rcpm, fauc_IB, rcpm_IB)) #strict is deleted
 
 print("best_fauc_IgnoreBigBbox:{:.4f}   (epoch:{})".format(best_value, best_epoch + 1))
 print("test_fauc_IgnoreBigBbox:{:.4f}, at the epoch.".format(test_performance))
 
 #save the model since we might use it later
-PATH = modelPath + f"model_version{version}_{trainPath}_{validBboxName}_{pretrained}_epoch{num_epoch}"
+PATH = modelPath + f"model_version{version}_{trainPath}_{validBboxName}_{pretrained}_{optimizerName}_epoch{num_epoch}"
 torch.save(best_model, PATH) #best_model
 model.load_state_dict(torch.load(PATH)) #visualizationのときにもこのbest modelを用いることにする。
 
 
 #visualize the fROC in which bigboxes are ignored
 #validation
-TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_big_bbox=True)
+TPRs, FPIs, thresholds = FROC(validloader, model, ignore_big_bbox=True)
 fauc = FAUC(TPRs, FPIs)
 rcpm = RCPM(TPRs, FPIs)
 print("FROC_valid_ignoreBigBbox   val_fauc:{:.4f}  val_rcpm:{:.4f}".format(fauc, rcpm))
-plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_valid_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{num_epoch}_version{version}.png")
+plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_valid_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{optimizerName}_{num_epoch}_version{version}.png")
 
 #test
-TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, ignore_big_bbox=True)
+TPRs, FPIs, thresholds = FROC(testloader, model, ignore_big_bbox=True)
 fauc = FAUC(TPRs, FPIs)
 rcpm = RCPM(TPRs, FPIs)
 print("FROC_test_ignoreBigBbox    val_fauc:{:.4f}   val_rcpm:{:.4f}".format(fauc, rcpm))
-plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_test_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{num_epoch}_version{version}.png")
+plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_test_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{optimizerName}_{num_epoch}_version{version}.png")
 
 
 #modify and redefine again to use in visualization
