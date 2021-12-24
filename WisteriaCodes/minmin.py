@@ -159,8 +159,9 @@ for epoch in range(num_epoch):
 
     train_loss = train(trainloader, model, optimizer)
 
-    # thresholds = [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
-    thresholds = [0.01 * i for i in range(101)]
+    #thresholds = [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
+    # thresholds = [0.01 * i for i in range(101)]
+    thresholds = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
 
     #see the performance on the training dataset
     TPRs, FPIs, thresholds = FROC(trainloader, model, thresholds=thresholds) #, ignore_big_bbox=Trueは合ってもなくても同じ。そもそも大bboxはないので。
@@ -170,10 +171,10 @@ for epoch in range(num_epoch):
     # validation
     with torch.no_grad():
 
-        #不要だがまあ一応。
-        TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds)
-        fauc = FAUC(TPRs, FPIs)
-        rcpm = RCPM(TPRs, FPIs)
+        # #不要だがまあ一応。
+        # TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds)
+        # fauc = FAUC(TPRs, FPIs)
+        # rcpm = RCPM(TPRs, FPIs)
 
         #Ignore Big
         TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_big_bbox=True)
@@ -189,7 +190,8 @@ for epoch in range(num_epoch):
             test_performance = FAUC(TPRs, FPIs)
             test_rcpm = RCPM(TPRs, FPIs)
 
-    print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}    val_fauc:{:.4f}   val_rcpm:{:.4f}   val_fauc_IB:{:.4f}  val_rcpm_IB:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc, rcpm, fauc_IB, rcpm_IB)) #strict is deleted
+    #print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}    val_fauc:{:.4f}   val_rcpm:{:.4f}   val_fauc_IB:{:.4f}  val_rcpm_IB:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc, rcpm, fauc_IB, rcpm_IB)) #strict is deleted
+    print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}    val_fauc_IB:{:.4f}  val_rcpm_IB:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc_IB, rcpm_IB)) #strict is deleted
 
 print("best_fauc_IgnoreBigBbox:{:.4f}   (epoch:{})".format(best_value, best_epoch + 1))
 print("test_fauc_IgnoreBigBbox:{:.4f},  test_rcpm_IgnoreBigBbox:{:.4f}    At the epoch.".format(test_performance, test_rcpm))
