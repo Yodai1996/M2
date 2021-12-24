@@ -16,23 +16,23 @@ module load cuda/11.1
 
 cd "${PJM_O_WORKDIR}" || exit
 
-fold=1 #modify here. 5-fold CV.
+fold=2 #modify here. 5-fold CV.
 
-pretrained='BigBbox' #"ImageNet"
+pretrained="ImageNet" #'BigBbox' #"ImageNet"
 metric="FAUC_Pretrained${pretrained}"
 
 optimizer="VSGD" #epsilon=0.01
+epoch=120 #40だと少なかった
 
 #for simulation
-boText="bo_minmin_${metric}_${optimizer}_${fold}.txt"
-bufText="buf_minmin_${metric}_${optimizer}_${fold}.txt"
+boText="bo_minmin_${metric}_${optimizer}_epoch${epoch}_${fold}.txt"
+bufText="buf_minmin_${metric}_${optimizer}_epoch${epoch}_${fold}.txt"
 
 m=1000
 normalDir="/work/gk36/k77012/M2/data/NormalDir/" #データプールなら何でもよい。
 normalIdList="/work/gk36/k77012/M2/normalFiles${m}.csv"
 
 #for training
-epoch=40
 batch_size=64
 numSamples=50
 model='SSD'
@@ -46,20 +46,20 @@ testBboxName="rare_small_bboxInfo_81_${fold}_withNormal"
 #testBbox="${testBboxName}.csv"
 
 #make dir for model and log
-modelPath="/work/gk36/k77012/M2/model/minmin_${metric}_${optimizer}/"
+modelPath="/work/gk36/k77012/M2/model/minmin_${metric}_${optimizer}_epoch${epoch}/"
 mkdir -p ${modelPath}
-mkdir -p "/work/gk36/k77012/M2/train_log/minmin_${metric}_${optimizer}/"
+mkdir -p "/work/gk36/k77012/M2/train_log/minmin_${metric}_${optimizer}_epoch${epoch}/"
 
-for i in 6
+for i in 6 7 8 9 #30 31 32 33 34 35 36 37 38 39 40
 do
   cd ../bo_io
   ./build/suggest --hm --ha --hpopt -a ei --md 5 --mi ./in/${boText} >> ../${bufText}
 
   trainPath="sim${i}_${m}"
-  abnormalDir="/work/gk36/k77012/M2/data/minmin_${metric}_${optimizer}_${fold}/${trainPath}/"
-  segMaskDir="/work/gk36/k77012/M2/SegmentationMask/minmin_${metric}_${optimizer}_${fold}/mask${i}_${m}/"
-  paraDir="/work/gk36/k77012/M2/simDataInfo/paraInfo/minmin_${metric}_${optimizer}_${fold}/"
-  bboxDir="/work/gk36/k77012/M2/simDataInfo/bboxInfo/minmin_${metric}_${optimizer}_${fold}/"
+  abnormalDir="/work/gk36/k77012/M2/data/minmin_${metric}_${optimizer}_epoch${epoch}_${fold}/${trainPath}/"
+  segMaskDir="/work/gk36/k77012/M2/SegmentationMask/minmin_${metric}_${optimizer}_epoch${epoch}_${fold}/mask${i}_${m}/"
+  paraDir="/work/gk36/k77012/M2/simDataInfo/paraInfo/minmin_${metric}_${optimizer}_epoch${epoch}_${fold}/"
+  bboxDir="/work/gk36/k77012/M2/simDataInfo/bboxInfo/minmin_${metric}_${optimizer}_epoch${epoch}_${fold}/"
   paraPath="${paraDir}/parameterInfo${i}_${m}.csv"
   bboxPath="${bboxDir}/bboxInfo${i}_${m}.csv"
 
@@ -68,14 +68,14 @@ do
   mkdir -p ${paraDir}
   mkdir -p ${bboxDir}
 
-  savePath="minmin_${metric}_${optimizer}/${trainPath}_${validBboxName}_${testBboxName}_${model}_batch${batch_size}_epoch${epoch}_pretrained${pretrained}"
+  savePath="minmin_${metric}_${optimizer}_epoch${epoch}/${trainPath}_${validBboxName}_${testBboxName}_${model}_batch${batch_size}_pretrained${pretrained}"
 
   mkdir -p "/work/gk36/k77012/M2/result/${savePath}/" #for saving Dir
   mkdir -p "/work/gk36/k77012/M2/result/${savePath}/train"
   mkdir -p "/work/gk36/k77012/M2/result/${savePath}/valid"
   mkdir -p "/work/gk36/k77012/M2/result/${savePath}/test"
 
-  pipenv run python ../WisteriaCodes/minmin.py $i ${boText} ${bufText} ${normalIdList} ${normalDir} ${abnormalDir} ${segMaskDir} ${paraPath} ${bboxPath} ${validPath} ${testPath} ${savePath} ${validBboxName} ${testBboxName} ${model} ${pretrained} ${epoch} ${batch_size} ${numSamples} ${modelPath} ${metric} ${optimizer} >> ../train_log/minmin_${metric}_${optimizer}/sim${i}_${trainPath}_${validBboxName}_${testBboxName}_${model}_epoch${epoch}_batchsize${batch_size}_${pretrained}.txt
+  pipenv run python ../WisteriaCodes/minmin.py $i ${boText} ${bufText} ${normalIdList} ${normalDir} ${abnormalDir} ${segMaskDir} ${paraPath} ${bboxPath} ${validPath} ${testPath} ${savePath} ${validBboxName} ${testBboxName} ${model} ${pretrained} ${epoch} ${batch_size} ${numSamples} ${modelPath} ${metric} ${optimizer} >> ../train_log/minmin_${metric}_${optimizer}_epoch${epoch}/sim${i}_${trainPath}_${validBboxName}_${testBboxName}_${model}_batchsize${batch_size}_${pretrained}.txt
   echo $i'_finished'
 
 done
