@@ -41,7 +41,7 @@ validBbox, testBbox = validBboxName + ".csv", testBboxName + ".csv"  #valid と 
 trainDir = abnormalDir
 validDir = "/work/gk36/k77012/M2/data/{}/".format(validPath)
 testDir = "/work/gk36/k77012/M2/data/{}/".format(testPath)
-saveDir = "/work/gk36/k77012/M2/result/{}/".format(savePath)
+saveDir = "/work/jh170036a/k77012/M2/result/{}/".format(savePath)
 
 # read the recommended next values from Gaussian Process.
 fileHandle = open('/work/gk36/k77012/M2/' + bufText, "r")
