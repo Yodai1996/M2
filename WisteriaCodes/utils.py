@@ -752,3 +752,27 @@ def plotFROC(TPRs, FPIs, savePath, include_FPIs=8):
 
     plt.savefig(savePath)
 
+
+def modifyArea(TPRs, FPIs, include_FPIs=1):
+    #include_FPIs: 少なくとも含むべきxの範囲。すなわち、これ以上のところは可視化する際にはカットする。
+
+    # Preprocessing: make the input an ascending order
+    if TPRs[0] > TPRs[-1]:
+        TPRs = list(reversed(TPRs))
+        FPIs = list(reversed(FPIs))
+
+    #case distinction for visualization
+    if include_FPIs < FPIs[-1]:
+
+        # interpolate
+        y, index = interpolate(TPRs, FPIs, include_FPIs)
+
+        # add the element at the point include_FPIs to the appropriate index
+        FPIs[index + 1] = include_FPIs
+        TPRs[index + 1] = y
+
+        # delete the area outside of include_FPIs
+        FPIs = FPIs[:index + 2]
+        TPRs = TPRs[:index + 2]
+
+    return TPRs, FPIs

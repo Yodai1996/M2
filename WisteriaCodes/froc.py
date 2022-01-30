@@ -47,7 +47,7 @@ transform = transforms.Compose([
     transforms.ToTensor()  # これを挟むと自動で[0,1)に正規化される
 ])
 
-
+#linestyles=[(0, (1, 0)), (0, (1, 1)), (0, (5, 1)), (0, (5, 1, 1, 1)),  ]
 plt.figure()
 
 for i in range(5):
@@ -89,25 +89,25 @@ for i in range(5):
     TPRs, FPIs, thresholds = FROC(dataloader, nonraremodel, ignore_big_bbox=True)
     TPRs, FPIs = modifyArea(TPRs, FPIs, include_FPIs=end)
     if i==0:
-        plt.plot(FPIs, TPRs, "g", label="nonrare pneumonia dataset")
+        plt.plot(FPIs, TPRs, "g", label="nonrare pneumonia dataset", linestyle=":")
     else:
-        plt.plot(FPIs, TPRs, "g")
+        plt.plot(FPIs, TPRs, "g", linestyle=":")
 
     # BayRn
     TPRs, FPIs, thresholds = FROC(dataloader, Baymodel, ignore_big_bbox=True)
     TPRs, FPIs = modifyArea(TPRs, FPIs, include_FPIs=end)
     if i == 0:
-        plt.plot(FPIs, TPRs, "b", label="BayRn")
+        plt.plot(FPIs, TPRs, "b", label="BayRn", linestyle="--")
     else:
-        plt.plot(FPIs, TPRs, "b")
+        plt.plot(FPIs, TPRs, "b", linestyle="--")
 
     # CDR
     TPRs, FPIs, thresholds = FROC(dataloader, CDRmodel, ignore_big_bbox=True)
     TPRs, FPIs = modifyArea(TPRs, FPIs, include_FPIs=end)
     if i == 0:
-        plt.plot(FPIs, TPRs, "r", label="CDR")
+        plt.plot(FPIs, TPRs, "r", label="CDR", linestyle="-")
     else:
-        plt.plot(FPIs, TPRs, "r")
+        plt.plot(FPIs, TPRs, "r", linestyle="-")
 
 
 plt.xlabel('FPs/Image')
