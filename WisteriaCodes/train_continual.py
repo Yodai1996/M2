@@ -36,7 +36,13 @@ if optimizerName=='VSGD':
 trainDir, validDir = trainPath, validPath
 realValidDir = "/work/gk36/k77012/M2/data/{}/".format(realValidPath)
 testDir = "/work/gk36/k77012/M2/data/{}/".format(testPath)
-saveDir = "/work/gk36/k77012/M2/result/{}/".format(savePath)
+
+#移行措置。
+if savePath[:12]=="curriculumBO":
+    saveDir = "/work/gk36/k77012/M2/result/{}/".format(savePath)
+else:
+    saveDir = savePath + "/"
+
 df = pd.read_csv(trainBbox)
 df_valid = pd.read_csv(validBbox)
 df_realValid = pd.read_csv("/work/gk36/k77012/M2/{}".format(realValidBbox))
@@ -110,7 +116,10 @@ if optimizerName=='VSGD':
     variability = variability * (decayRate**version) #by default, variability=0.01, decayRate=1. #reduce the epsilon by calculating variability * (decayRate)**version
     optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
 else:
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    if optimizerName=="Adam":
+        optimizer = optim.Adam(model.parameters(), lr=lr)
+    else:
+        optimizer = optim.SGD(model.parameters(), lr=lr)
 
 best_value = 0
 best_epoch = -100 #as default
@@ -122,8 +131,10 @@ for epoch in range(num_epoch):
 
     train_loss = train(trainloader, model, optimizer)
 
+    thresholds = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
+
     #see the performance on the training dataset
-    TPRs, FPIs, thresholds = FROC(trainloader, model) #, ignore_big_bbox=Trueは合ってもなくても同じ。そもそも大bboxはないので。
+    TPRs, FPIs, thresholds = FROC(trainloader, model, thresholds=thresholds) #, ignore_big_bbox=Trueは合ってもなくても同じ。そもそも大bboxはないので。
     fauc_train = FAUC(TPRs, FPIs)
     rcpm_train = RCPM(TPRs, FPIs)
     #cpm_train  = CPM(TPRs, FPIs)
@@ -132,13 +143,13 @@ for epoch in range(num_epoch):
     with torch.no_grad():
 
         #Ignore Big
-        TPRs, FPIs, thresholds = FROC(validloader, model, ignore_big_bbox=True)
+        TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_big_bbox=True)
         fauc_IB = FAUC(TPRs, FPIs)
         rcpm_IB = RCPM(TPRs, FPIs)
         cpm_IB  = CPM(TPRs, FPIs)
 
         #Ignore Big
-        TPRs, FPIs, thresholds = FROC(realValidloader, model, ignore_big_bbox=True)
+        TPRs, FPIs, thresholds = FROC(realValidloader, model, thresholds=thresholds, ignore_big_bbox=True)
         fauc_realValid_IB = FAUC(TPRs, FPIs)
         rcpm_realValid_IB = RCPM(TPRs, FPIs)
         cpm_realValid_IB  = CPM(TPRs, FPIs)
@@ -155,8 +166,8 @@ for epoch in range(num_epoch):
     print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}   val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}   realVal_fauc:{:.4f}   realVal_cpm:{:.4f}  realVal_rcpm:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc_IB, cpm_IB, rcpm_IB, fauc_realValid_IB, cpm_realValid_IB, rcpm_realValid_IB), end="  ") #strict is deleted
 
     #check catastrophic forgetting
-    for i,loader in enumerate(prevList):
-        TPRs, FPIs, thresholds = FROC(loader, model, ignore_big_bbox=True)
+    for i, loader in enumerate(prevList):
+        TPRs, FPIs, thresholds = FROC(loader, model, thresholds=thresholds, ignore_big_bbox=True)
         sim_i_fauc = FAUC(TPRs, FPIs)
         print("sim{}FAUC:{:.3f}".format(i+1, sim_i_fauc), end="  ")
 

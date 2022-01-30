@@ -76,8 +76,10 @@ if optimizerName=='VSGD':
     variability = 0.01 #fixed for master thesis
     optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
 else:
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-
+    if optimizerName == "Adam":
+        optimizer = optim.Adam(model.parameters(), lr=lr)
+    else:
+        optimizer = optim.SGD(model.parameters(), lr=lr)
 
 best_value = 0
 best_epoch = -100 #as default
@@ -88,8 +90,10 @@ for epoch in range(num_epoch):
 
     train_loss = train(trainloader, model, optimizer)
 
+    thresholds = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
+
     #see the performance on the training dataset
-    TPRs, FPIs, thresholds = FROC(trainloader, model) #, ignore_big_bbox=Trueは合ってもなくても同じ。そもそも大bboxはないので。
+    TPRs, FPIs, thresholds = FROC(trainloader, model, thresholds=thresholds) #, ignore_big_bbox=Trueは合ってもなくても同じ。そもそも大bboxはないので。
     fauc_train = FAUC(TPRs, FPIs)
     rcpm_train = RCPM(TPRs, FPIs)
 
@@ -97,12 +101,12 @@ for epoch in range(num_epoch):
     with torch.no_grad():
 
         #不要だがまあ一応。
-        TPRs, FPIs, thresholds = FROC(validloader, model)
+        TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds)
         fauc = FAUC(TPRs, FPIs)
         rcpm = RCPM(TPRs, FPIs)
 
         #Ignore Big
-        TPRs, FPIs, thresholds = FROC(validloader, model, ignore_big_bbox=True)
+        TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_big_bbox=True)
         fauc_IB = FAUC(TPRs, FPIs)
         rcpm_IB = RCPM(TPRs, FPIs)
 
@@ -111,7 +115,7 @@ for epoch in range(num_epoch):
             best_model = copy.deepcopy(model.state_dict())
             best_epoch = epoch
 
-            TPRs, FPIs, thresholds = FROC(testloader, model, ignore_big_bbox=True)
+            TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, ignore_big_bbox=True)
             test_performance = FAUC(TPRs, FPIs)
 
     print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}    val_fauc:{:.4f}   val_rcpm:{:.4f}   val_fauc_IB:{:.4f}  val_rcpm_IB:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc, rcpm, fauc_IB, rcpm_IB)) #strict is deleted
@@ -127,14 +131,14 @@ model.load_state_dict(torch.load(PATH)) #visualizationのときにもこのbest 
 
 #visualize the fROC in which bigboxes are ignored
 #validation
-TPRs, FPIs, thresholds = FROC(validloader, model, ignore_big_bbox=True)
+TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_big_bbox=True)
 fauc = FAUC(TPRs, FPIs)
 rcpm = RCPM(TPRs, FPIs)
 print("FROC_valid_ignoreBigBbox   val_fauc:{:.4f}  val_rcpm:{:.4f}".format(fauc, rcpm))
 plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_valid_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{optimizerName}_{num_epoch}_version{version}.png")
 
 #test
-TPRs, FPIs, thresholds = FROC(testloader, model, ignore_big_bbox=True)
+TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, ignore_big_bbox=True)
 fauc = FAUC(TPRs, FPIs)
 rcpm = RCPM(TPRs, FPIs)
 print("FROC_test_ignoreBigBbox    val_fauc:{:.4f}   val_rcpm:{:.4f}".format(fauc, rcpm))

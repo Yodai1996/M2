@@ -147,7 +147,10 @@ if optimizerName=='VSGD':
     variability = 0.01 #fixed for master thesis
     optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
 else:
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    if optimizerName == "Adam":
+        optimizer = optim.Adam(model.parameters(), lr=lr)
+    else:
+        optimizer = optim.SGD(model.parameters(), lr=lr)
 
 best_value = 0
 best_epoch = -100 #as default
