@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from scipy import integrate
+import bisect
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -626,6 +627,31 @@ def FROC(dataloader, model, hit_thres=0.2, size_thres=150 * 300 / 1024, threshol
     FPIs = numFP / total
 
     return TPRs, FPIs, thresholds  # numTP, numFP, numGT, total, thresholds
+
+def decideThres(dataloader, model, acceptableFP):
+    TPRs, FPIs, thresholds = FROC(dataloader, model, ignore_big_bbox=True)
+
+    #make ascending order
+    if FPIs[0] > FPIs[-1]:
+        TPRs = list(reversed(TPRs))
+        FPIs = list(reversed(FPIs))
+        thresholds = list(reversed(thresholds))
+
+    i = bisect.bisect_right(FPIs, acceptableFP)
+    i -= 1
+
+    return thresholds[i], TPRs[i], FPIs[i], i
+
+def calcMetric(dataloader, model, index):
+    TPRs, FPIs, thresholds = FROC(dataloader, model, ignore_big_bbox=True)
+
+    # make ascending order
+    if FPIs[0] > FPIs[-1]:
+        TPRs = list(reversed(TPRs))
+        FPIs = list(reversed(FPIs))
+        thresholds = list(reversed(thresholds))
+
+    return TPRs[index], FPIs[index]
 
 
 def interpolate(TPRs, FPIs, x):
