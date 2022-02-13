@@ -30,7 +30,7 @@ args = sys.argv
 trainPath, validPath, realValidPath, testPath, trainBbox, validBbox, realValidBbox, testBbox, modelPath, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10]
 num_epoch, batch_size, numSamples, version = int(args[11]), int(args[12]), int(args[13]), int(args[14])
 savePath, optimizerName, pretrained = args[15], args[16], args[17]
-if optimizerName=='VSGD':
+if optimizerName=='VSGD' or optimizerName=='SAM':
     variability, decayRate = float(args[18]), float(args[19])
 
 trainDir, validDir = trainPath, validPath
@@ -115,6 +115,9 @@ if optimizerName=='VSGD':
     num_iters = len(trainloader) #it will be the ceiling of num_data/batch_size
     variability = variability * (decayRate**version) #by default, variability=0.01, decayRate=1. #reduce the epsilon by calculating variability * (decayRate)**version
     optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
+elif optimizerName == "SAM":
+    from optimizers.sam import SAMSGD
+    optimizer = SAMSGD(model.parameters(), lr=lr, rho=variability)
 else:
     if optimizerName=="Adam":
         optimizer = optim.Adam(model.parameters(), lr=lr)
