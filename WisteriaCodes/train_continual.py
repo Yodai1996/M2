@@ -132,7 +132,10 @@ test_performance = 0
 
 for epoch in range(num_epoch):
 
-    train_loss = train(trainloader, model, optimizer)
+    if optimizerName == "SAM":
+        train_loss = trainWithCls(trainloader, model, optimizer)  # SAMの場合はclosureにしないといけなそう.
+    else:
+        train_loss = train(trainloader, model, optimizer)
 
     thresholds = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
 
