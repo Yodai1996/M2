@@ -24,7 +24,7 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice, FROC, FAUC, CPM, RCPM, plotFROC, trainWithCls
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice, FROC, FAUC, CPM, RCPM, plotFROC
 
 args = sys.argv
 trainPath, validPath, realValidPath, testPath, trainBbox, validBbox, realValidBbox, testBbox, modelPath, modelName = args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10]
@@ -71,6 +71,12 @@ trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, pin_memo
 validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 realValidloader = DataLoader(realValidset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
+
+if pretrained=="BigBbox":
+    df_bigbbox = pd.read_csv("/work/gk36/k77012/M2/nonSmall_bboxInfo_164_withNormal.csv")
+    df_bigbbox = preprocess_df(df_bigbbox, originalSize, size, testDir) #just AllDataDir
+    pretrainset = MyDataset(df_bigbbox, transform=transform)
+    pretrainloader = DataLoader(pretrainset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
 num_classes = 2 #(len(classes)) + 1
 if modelName=="SSD":
@@ -170,6 +176,12 @@ for epoch in range(num_epoch):
             test_performance = FAUC(TPRs, FPIs)
 
     print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}   val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}   realVal_fauc:{:.4f}   realVal_cpm:{:.4f}  realVal_rcpm:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc_IB, cpm_IB, rcpm_IB, fauc_realValid_IB, cpm_realValid_IB, rcpm_realValid_IB), end="  ") #strict is deleted
+
+    #added
+    if pretrained == "BigBbox":
+        TPRs, FPIs, thresholds = FROC(pretrainloader, model, thresholds=thresholds) #ignore_big_bbox=False, accept_TP_duplicate=True
+        pretrainedBigBbox_fauc = FAUC(TPRs, FPIs)
+        print("BigBboxFAUC:{:.3f}".format(pretrainedBigBbox_fauc), end="  ")
 
     #check catastrophic forgetting
     for i, loader in enumerate(prevList):
