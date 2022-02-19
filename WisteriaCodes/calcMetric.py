@@ -31,7 +31,7 @@ To see the performances in the following setting, normal:abnormal=10:1
 '''
 
 args = sys.argv
-dataPath, validBboxName, testBboxName, Path, loadModelPath, pretrain = args[1], args[2], args[3], args[4], args[5], args[6]
+dataPath, validBboxName, testBboxName, Path, loadModelPath, pretrained = args[1], args[2], args[3], args[4], args[5], args[6]
 
 validBbox = validBboxName + ".csv"
 testBbox = testBboxName + ".csv"
