@@ -93,7 +93,8 @@ if version >= 2:
     model.load_state_dict(torch.load(PATH))
 
 #inference
-TPRs, FPIs, thresholds = FROC(dataloader, model, ignore_big_bbox=True)
+thresholds = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 1]
+TPRs, FPIs, thresholds = FROC(dataloader, model, thresholds=thresholds, ignore_big_bbox=True)
 infer = FAUC(TPRs, FPIs)
 
 if len(args)>8: #curriculumBO
