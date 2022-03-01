@@ -97,8 +97,12 @@ thresholds = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.375, 0.4, 0.425, 0.
 TPRs, FPIs, thresholds = FROC(dataloader, model, thresholds=thresholds, ignore_big_bbox=True)
 infer = FAUC(TPRs, FPIs)
 
-if len(args)>8: #curriculumBO
-    target = start * (decayRate**version)    #target value in the current curriculum
+if len(args) > 8:  # curriculumBO
+    if decayRate == 0 or decayRate == 1:
+        target = start
+    elif decayRate < 1:  # else #バグらせるのが怖いので限定的にする。いやしない。
+        target = start - decayRate * (version - 1)
+    # target = start * (decayRate**version)    #target value in the current curriculum
     obj_function = -1 * abs(infer - target)  #objective function for this min-max formulation
 # else: #adversarialBO
 #     obj_function = -1 * infer #as it is adversarialBO, we maximize the value multiplied by -1.
