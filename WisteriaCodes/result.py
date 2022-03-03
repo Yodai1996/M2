@@ -24,7 +24,7 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice, FROC, FAUC, CPM, RCPM, plotFROC
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice, FROC, FAUC, CPM, RCPM, plotFROC, interpolate
 
 '''
 just for making a result
@@ -67,16 +67,31 @@ if modelName=="SSD":
 
 
 #inference
+fpsI = 0.2 # the num of FPs per Image
 TPRs, FPIs, thresholds = FROC(dataloader, model, ignore_big_bbox=True)
 fauc = FAUC(TPRs, FPIs)
 cpm = CPM(TPRs, FPIs)
 rcpm = RCPM(TPRs, FPIs)
-print("test_fauc:{:.4f}  test_cpm:{:.4f}  test_rcpm:{:.4f}".format(fauc, cpm, rcpm))
-plotFROC(TPRs, FPIs, saveFROCPath + f"{dataBboxName}_FROC.png", include_FPIs=3)
+tpr, _ = interpolate(TPRs, FPIs, fpsI)
+print("test_fauc:")
+print("{:.4f}".format(fauc))
+print()
+print("test_cpm:")
+print("{:.4f}".format(cpm))
+print()
+print("TPR at the number of FPs per images is:{}".format(fpsI))
+print("{:.4f}".format(tpr))
+print()
+print()
+#一応rcpmも表示
+print("test_rcpm:")
+print("{:.4f}".format(rcpm))
 
-
-dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
-
-# visualization
-numSamples=81
-visualize(model, dataloader, df, numSamples, saveDir, thres=0.28)
+# plotFROC(TPRs, FPIs, saveFROCPath + f"{dataBboxName}_FROC.png", include_FPIs=3)
+#
+#
+# dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
+#
+# # visualization
+# numSamples=81
+# visualize(model, dataloader, df, numSamples, saveDir, thres=0.28)

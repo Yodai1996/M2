@@ -673,7 +673,10 @@ def interpolate(TPRs, FPIs, x):
     # interpolated value at FPIs(x)
     x1, x2 = FPIs[i], FPIs[i + 1]
     y1, y2 = TPRs[i], TPRs[i + 1]
-    y = ((x2 - x) * y1 + (x - x1) * y2) / (x2 - x1)
+    if x1==x2: #y1==y2
+        y = y1
+    else:
+        y = ((x2 - x) * y1 + (x - x1) * y2) / (x2 - x1)
     return y, i
 
 
