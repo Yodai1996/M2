@@ -67,11 +67,20 @@ else:  #modelName=="fasterRCNN"
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes).to(device)
 
 # training
-optimizer = optim.Adam(model.parameters(), lr=lr) #as default
 if optimizerName=='VSGD':
     from optimizers.vsgd import VSGD
     num_iters = len(trainloader) #it will be the ceiling of num_data/batch_size
+    variability = variability * (decayRate**version) #by default, variability=0.01, decayRate=1. #reduce the epsilon by calculating variability * (decayRate)**version
     optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
+elif optimizerName == "SAM":
+    from optimizers.sam import SAMSGD
+    optimizer = SAMSGD(model.parameters(), lr=lr, rho=variability)
+else:
+    if optimizerName=="Adam":
+        optimizer = optim.Adam(model.parameters(), lr=lr)
+    else:
+        optimizer = optim.SGD(model.parameters(), lr=lr)
+
 
 best_value = 0
 best_epoch = None
