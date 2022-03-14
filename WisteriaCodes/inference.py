@@ -88,9 +88,16 @@ if modelName=="SSD":
     model2 = models.detection.ssd300_vgg16(num_classes = num_classes) #models.detection.ssd300_vgg16(num_classes = num_classes, pretrained=False, pretrained_backbone=False)
     model.head.classification_head = model2.head.classification_head.to(device)  #modify the head of the model
 
-    if pretrained=="BigBbox":
+    if pretrained=="pretrained" or pretrained=="ImageNet": #same meaning
+        pass
+    elif pretrained=="BigBbox":
         loadModelPath="/work/gk36/k77012/M2/model/pretrain/model_nonSmall_bboxInfo_655_nonSmall_bboxInfo_164_withNormal_VSGD_0.01_120" #とりあえず、VSGD, noise=0.01を使用すれことにする。
         model.load_state_dict(torch.load(loadModelPath))
+    else:
+        loadModelPath = f"/work/gk36/k77012/M2/model/pretrain/{pretrained}"  # とりあえず、VSGD, noise=0.01を使用すれことにする。
+        model.load_state_dict(torch.load(loadModelPath))
+
+
 
 #load the previously trained model
 if version >= 2:

@@ -72,7 +72,9 @@ validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, pin_mem
 realValidloader = DataLoader(realValidset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
 
-if pretrained=="BigBbox":
+if pretrained=="pretrained" or pretrained=="ImageNet": #same meaning
+    pass
+else: #if pretrained=="BigBbox":
     df_bigbbox = pd.read_csv("/work/gk36/k77012/M2/nonSmall_bboxInfo_164_withNormal.csv")
     df_bigbbox = preprocess_df(df_bigbbox, originalSize, size, testDir) #just AllDataDir
     pretrainset = MyDataset(df_bigbbox, transform=transform)
@@ -87,8 +89,13 @@ if modelName=="SSD":
     model2 = models.detection.ssd300_vgg16(num_classes = num_classes) #models.detection.ssd300_vgg16(num_classes = num_classes, pretrained=False, pretrained_backbone=False)
     model.head.classification_head = model2.head.classification_head.to(device)  #modify the head of the model
 
-    if pretrained=="BigBbox":
-        loadModelPath = "/work/gk36/k77012/M2/model/pretrain/model_nonSmall_bboxInfo_655_nonSmall_bboxInfo_164_withNormal_VSGD_0.01_120"  # とりあえず、VSGD, noise=0.01を使用すれことにする。
+    if pretrained=="pretrained" or pretrained=="ImageNet": #same meaning
+        pass
+    elif pretrained=="BigBbox":
+        loadModelPath="/work/gk36/k77012/M2/model/pretrain/model_nonSmall_bboxInfo_655_nonSmall_bboxInfo_164_withNormal_VSGD_0.01_120" #とりあえず、VSGD, noise=0.01を使用すれことにする。
+        model.load_state_dict(torch.load(loadModelPath))
+    else:
+        loadModelPath = f"/work/gk36/k77012/M2/model/pretrain/{pretrained}"  # とりあえず、VSGD, noise=0.01を使用すれことにする。
         model.load_state_dict(torch.load(loadModelPath))
 
 #load the previously trained model
@@ -178,7 +185,9 @@ for epoch in range(num_epoch):
     print("epoch:{}/{}  tr_loss:{:.4f}   tr_fauc:{:.4f}   tr_rcpm:{:.4f}   val_fauc:{:.4f}  val_cpm:{:.4f}  val_rcpm:{:.4f}   realVal_fauc:{:.4f}   realVal_cpm:{:.4f}  realVal_rcpm:{:.4f}".format(epoch + 1, num_epoch, train_loss, fauc_train, rcpm_train, fauc_IB, cpm_IB, rcpm_IB, fauc_realValid_IB, cpm_realValid_IB, rcpm_realValid_IB), end="  ") #strict is deleted
 
     #added
-    if pretrained == "BigBbox":
+    if pretrained == "pretrained" or pretrained == "ImageNet":  # same meaning
+        pass
+    else:  # if pretrained=="BigBbox":
         TPRs, FPIs, thresholds = FROC(pretrainloader, model, thresholds=thresholds) #ignore_big_bbox=False, accept_TP_duplicate=True
         pretrainedBigBbox_fauc = FAUC(TPRs, FPIs)
         print("BigBboxFAUC:{:.3f}".format(pretrainedBigBbox_fauc), end="  ")
