@@ -70,7 +70,6 @@ else:  #modelName=="fasterRCNN"
 if optimizerName=='VSGD':
     from optimizers.vsgd import VSGD
     num_iters = len(trainloader) #it will be the ceiling of num_data/batch_size
-    variability = variability * (decayRate**version) #by default, variability=0.01, decayRate=1. #reduce the epsilon by calculating variability * (decayRate)**version
     optimizer = VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters) #VSGD(model.parameters(), lr=lr, variability=variability, num_iters=num_iters, weight_decay=weight_decay)
 elif optimizerName == "SAM":
     from optimizers.sam import SAMSGD
