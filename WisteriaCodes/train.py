@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice, FROC, FAUC, CPM, RCPM, plotFROC
+from utils import train, valid, preprocess_df, collate_fn, visualize, MyDataset, mIoU, mAP, mDice, FROC, FAUC, CPM, RCPM, plotFROC, interpolate
 
 args = sys.argv
 
@@ -134,6 +134,8 @@ print("test_fauc_IgnoreBigBbox:{:.4f}, at the epoch.".format(test_performance))
 
 #save the model since we might use it later
 PATH = modelPath + f"model_version{version}_{trainPath}_{validBboxName}_{pretrained}_{optimizerName}_epoch{num_epoch}"
+if version=="udr":
+    PATH = modelPath + f"model_{trainPath}_{validBboxName}_{pretrained}_{optimizerName}_epoch{num_epoch}"
 torch.save(best_model, PATH) #best_model
 model.load_state_dict(torch.load(PATH)) #visualizationのときにもこのbest modelを用いることにする。
 
@@ -144,15 +146,44 @@ TPRs, FPIs, thresholds = FROC(validloader, model, thresholds=thresholds, ignore_
 fauc = FAUC(TPRs, FPIs)
 rcpm = RCPM(TPRs, FPIs)
 print("FROC_valid_ignoreBigBbox   val_fauc:{:.4f}  val_rcpm:{:.4f}".format(fauc, rcpm))
-plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_valid_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{optimizerName}_{num_epoch}_version{version}.png")
+PATH = f"FROC_valid_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{optimizerName}_{num_epoch}_version{version}.png"
+if version=="udr":
+    PATH = f"FROC_valid_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{optimizerName}_{num_epoch}.png"
+plotFROC(TPRs, FPIs, saveFROCPath + PATH)
 
 #test
 TPRs, FPIs, thresholds = FROC(testloader, model, thresholds=thresholds, ignore_big_bbox=True)
 fauc = FAUC(TPRs, FPIs)
 rcpm = RCPM(TPRs, FPIs)
 print("FROC_test_ignoreBigBbox    val_fauc:{:.4f}   val_rcpm:{:.4f}".format(fauc, rcpm))
-plotFROC(TPRs, FPIs, saveFROCPath + f"FROC_test_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{optimizerName}_{num_epoch}_version{version}.png")
 
+#inference
+fpsI = 0.2 # the num of FPs per Image
+TPRs, FPIs, thresholds = FROC(testloader, model, ignore_big_bbox=True)
+fauc = FAUC(TPRs, FPIs)
+cpm = CPM(TPRs, FPIs)
+rcpm = RCPM(TPRs, FPIs)
+tpr, _ = interpolate(TPRs, FPIs, fpsI)
+print()
+print("test_fauc:")
+print("{:.4f}".format(fauc))
+print()
+print("test_cpm:")
+print("{:.4f}".format(cpm))
+print()
+print("TPR at the number of FPs per images is:{}".format(fpsI))
+print("{:.4f}".format(tpr))
+print()
+print()
+#一応rcpmも表示
+print("test_rcpm:")
+print("{:.4f}".format(rcpm))
+
+
+PATH = f"FROC_test_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{optimizerName}_{num_epoch}_version{version}.png"
+if version=="udr":
+    PATH = f"FROC_test_ignoreBigBbox_{trainPath}_{validBboxName}_{testBboxName}_{pretrained}_{optimizerName}_{num_epoch}.png"
+plotFROC(TPRs, FPIs, saveFROCPath + PATH)
 
 #modify and redefine again to use in visualization
 trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4,  collate_fn=collate_fn)
