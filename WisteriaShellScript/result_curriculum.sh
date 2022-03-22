@@ -20,14 +20,16 @@ cd "${PJM_O_WORKDIR}" || exit
 #pipenv shell #activate the virtual environment
 
 #modify here
-fold=5
-score="0.6"
-iter=6
+fold=4
+score="0.75" #"1.0" #"0.3"
+scoreDecayRate="0.05" #"0.1" #set "1.0" as a default
+iter=4
 pretrain="ImageNet" #"BigBbox" #"ImageNet"
 epoch=120
 
-optimizer="VSGD" #"SAM" #"SGD" #"Adam" #"VSGD"
+optimizer="VSGD" #"SGD" #"SAM" #"SGD" #"Adam" #"VSGD"
 variability="0.01" #"0.05" #when you use SAM, use an appropriate value of rho, e.g., 0.05. Otherwise, use 0.01.
+
 
 #test data
 dataPath='AllDataDir'
@@ -42,24 +44,28 @@ dataBboxName="rare_small_bboxInfo_81_${fold}_withNormal"
 #"minmin_FAUC_PretrainedImageNet_VSGD_epoch120/model_version30_rare_small_bboxInfo_20_1_withNormal_pretrainedImageNet_epoch120"
 #"curriculumBO/rare_small_bboxInfo_20_1_withNormal/start0.5_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model7"
 
-Path="curriculumBO/rare_small_bboxInfo_20_${fold}_withNormal/start${score}_decay1.0_${optimizer}_FAUC_Pretrained${pretrain}_variability${variability}_decay1.0_t1000_v200_iter30_inf30_epoch${epoch}/model${iter}"
+Path="curriculumBO/rare_small_bboxInfo_20_${fold}_withNormal/start${score}_decay${scoreDecayRate}_${optimizer}_FAUC_Pretrained${pretrain}_variability${variability}_decay1.0_t1000_v200_iter30_inf30_epoch${epoch}/model${iter}"
+#Path="curriculumBO/rare_small_bboxInfo_20_${fold}_withNormal/start${score}_decay1.0_${optimizer}_FAUC_Pretrained${pretrain}_variability${variability}_decay1.0_t1000_v200_iter30_inf30_epoch${epoch}/model${iter}"
 #Path="curriculumBO/rare_small_bboxInfo_20_${fold}_withNormal/start${score}_decay1.0_${optimizer}_FAUC_Pretrained${pretrain}_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch${epoch}/model${iter}"
 #Path="curriculumBO/rare_small_bboxInfo_20_${fold}_withNormal/start${score}_decay1.0_VSGD_FAUC_Pretrained${pretrain}_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch${epoch}/model${iter}"
 #Path="pretrain/model_nonSmall_bboxInfo_655_nonSmall_bboxInfo_164_withNormal_VSGD_0.01_120"
 
-loadModelPath="/work/jh170036a/k77012/M2/model/${Path}"
+loadModelPath="/work/gu14/k77012/M2/model/${Path}"
+#loadModelPath="/work/jh170036a/k77012/M2/model/${Path}"
 #loadModelPath="/work/gk36/k77012/M2/model/${Path}"
 
-
-saveFROCPath="/work/jh170036a/k77012/M2/FROC/${Path}/${dataBboxName}/" #saveFROCPath="/work/gk36/k77012/M2/FROC/${Path}/${dataBboxName}/"
+saveFROCPath="/work/gu14/k77012/M2/FROC/${Path}/${dataBboxName}/" #saveFROCPath="/work/gk36/k77012/M2/FROC/${Path}/${dataBboxName}/"
+#saveFROCPath="/work/jh170036a/k77012/M2/FROC/${Path}/${dataBboxName}/" #saveFROCPath="/work/gk36/k77012/M2/FROC/${Path}/${dataBboxName}/"
 mkdir -p ${saveFROCPath}
 
 #numSamples=50
-saveDir="/work/jh170036a/k77012/M2/result/${Path}/${dataBboxName}/" #saveDir="/work/gk36/k77012/M2/result/${Path}/${dataBboxName}/"
+saveDir="/work/gu14/k77012/M2/result/${Path}/${dataBboxName}/" #saveDir="/work/gk36/k77012/M2/result/${Path}/${dataBboxName}/"
+#saveDir="/work/jh170036a/k77012/M2/result/${Path}/${dataBboxName}/" #saveDir="/work/gk36/k77012/M2/result/${Path}/${dataBboxName}/"
 mkdir -p ${saveDir} #for saving Dir
 #mkdir -p "${saveDir}"
 
-LogDir="/work/jh170036a/k77012/M2/log/${Path}/"
+LogDir="/work/gu14/k77012/M2/log/${Path}/"
+#LogDir="/work/jh170036a/k77012/M2/log/${Path}/"
 mkdir -p ${LogDir}
 
 pipenv run python ../WisteriaCodes/result.py ${dataPath} ${dataBboxName} ${Path} ${loadModelPath} ${saveDir} ${saveFROCPath} >> "${LogDir}/result_${dataBboxName}.txt"
