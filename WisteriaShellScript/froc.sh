@@ -22,7 +22,7 @@ cd "${PJM_O_WORKDIR}" || exit
 #pretrain="ImageNet"
 
 #endpoint to draw FROC
-end=1
+end=2
 
 prefixgk36="/work/gk36/k77012/M2/model"
 prefix="/work/jh170036a/k77012/M2/model"
@@ -47,13 +47,20 @@ BayRn5="${prefix}/${Path5}"
 
 #CDR Path
 #change here
-Path1="curriculumBO/rare_small_bboxInfo_20_1_withNormal/start0.5_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model7"
-Path2="curriculumBO/rare_small_bboxInfo_20_2_withNormal/start0.6_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model9"
-Path3="curriculumBO/rare_small_bboxInfo_20_3_withNormal/start0.6_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model10"
-Path4="curriculumBO/rare_small_bboxInfo_20_4_withNormal/start0.5_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model6"
-Path5="curriculumBO/rare_small_bboxInfo_20_5_withNormal/start0.5_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model5"
+#Path1="curriculumBO/rare_small_bboxInfo_20_1_withNormal/start0.5_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model7"
+#Path2="curriculumBO/rare_small_bboxInfo_20_2_withNormal/start0.6_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model9"
+#Path3="curriculumBO/rare_small_bboxInfo_20_3_withNormal/start0.6_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model10"
+#Path4="curriculumBO/rare_small_bboxInfo_20_4_withNormal/start0.5_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model6"
+#Path5="curriculumBO/rare_small_bboxInfo_20_5_withNormal/start0.5_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch40/model5"
+#
+#CDR1="${prefixgk36}/${Path1}"
+Path1="curriculumBO/rare_small_bboxInfo_20_1_withNormal/start0.6_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch120/model5"
+Path2="curriculumBO/rare_small_bboxInfo_20_2_withNormal/start0.6_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch120/model2"
+Path3="curriculumBO/rare_small_bboxInfo_20_3_withNormal/start0.6_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch120/model5"
+Path4="curriculumBO/rare_small_bboxInfo_20_4_withNormal/start0.7_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch120/model4"
+Path5="curriculumBO/rare_small_bboxInfo_20_5_withNormal/start0.4_decay1.0_VSGD_FAUC_PretrainedImageNet_variability0.01_decay1.0_t1000_v200_iter30_inf30_epoch120/model9"
 
-CDR1="${prefixgk36}/${Path1}"
+CDR1="${prefix}/${Path1}"
 CDR2="${prefix}/${Path2}"
 CDR3="${prefix}/${Path3}"
 CDR4="${prefix}/${Path4}"
